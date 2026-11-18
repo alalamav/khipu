@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Just Ends — an instrument for the khipu archive</title>
+<meta name="description" content="A sounding, wearing-out instrument built from the Open Khipu Repository: 619 khipus, 54,403 cords, 110,151 knots.">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<canvas id="stage" aria-label="A khipu drawn from archive measurements. Move across the cords to sound them."></canvas>
+
+<header id="head">
+  <h1>Just Ends</h1>
+  <p id="kline"></p>
+  <p id="ksub"></p>
+</header>
+
+<aside id="ledger" aria-live="off"></aside>
+
+<p id="tally"></p>
+
+<div id="banner" hidden>
+  <p id="bannerText"></p>
+  <button id="bannerRetie" class="primary">Re-tie from the archive</button>
+</div>
+
+<nav id="controls">
+  <div class="group">
+    <button id="prev" title="Previous khipu (←)" aria-label="Previous khipu">‹</button>
+    <button id="openCat" title="Choose a khipu">KH0000</button>
+    <button id="next" title="Next khipu (→)" aria-label="Next khipu">›</button>
+  </div>
+  <div class="group">
+    <button id="read" class="primary" title="Pass a hand along the main cord (space)">Read</button>
+    <button id="retie" title="Tie it again from the database rows">Re-tie</button>
+  </div>
+  <label class="group slider" title="How much each touch wears the cords">
+    <span>wear</span>
+    <span class="end">gloves</span>
+    <input id="wear" type="range" min="0" max="1" step="0.01" value="0.45">
+    <span class="end">centuries</span>
+  </label>
+  <label class="group slider" title="Volume">
+    <span>sound</span>
+    <input id="vol" type="range" min="0" max="1" step="0.01" value="0.8">
+  </label>
+  <div class="group">
+    <button id="zout" title="Step back" aria-label="Zoom out">−</button>
+    <button id="fit" title="See the whole khipu (f)">fit</button>
+    <button id="zin" title="Come closer" aria-label="Zoom in">+</button>
+  </div>
+  <div class="group">
+    <button id="openAbout">About</button>
+  </div>
+</nav>
+
+<!-- ───────── intro ───────── -->
+<div id="intro" class="overlay">
+  <div class="card intro">
+    <h2>Just Ends</h2>
+    <p class="epigraph">
+      <span class="code">U</span> unfinished: <q>not knotted; not broken; not cut... just ends</q>
+      <span class="src">termination code, Open Khipu Repository</span>
+    </p>
+    <p>A khipu is a record made of knotted cord, written and read with the hands. Nobody living can read the ones that survive.</p>
+    <p><span data-stat="khipus">619</span> of them have been measured and typed into a database:
+       <span data-stat="cords">54,403</span> cords, <span data-stat="knots">110,151</span> knots,
+       <span data-stat="km">16.7</span> kilometres of thread turned into rows.</p>
+    <p>This is an instrument that plays the rows. Each cord is a string as long as its measurement. Each knot rings where it was tied. Each cord ends the way the archive says it ended. Where the archive wrote nothing, you hear breath.</p>
+    <p>Reading is touch, and touch wears things out. Every pass of the hand loosens knots, until the main cord hangs empty and only the database is left.</p>
+    <button id="enter" class="primary big">Enter with sound</button>
+    <p class="hint">Move across the cords to sound them. Press <b>Read</b> to pass a hand along the whole khipu.</p>
+  </div>
+</div>
+
+<!-- ───────── catalogue ───────── -->
+<div id="catalogue" class="overlay" hidden>
+  <div class="card wide">
+    <div class="cardhead">
+      <h2>The archive</h2>
+      <button class="close" data-close="catalogue" aria-label="Close">×</button>
+    </div>
+    <div class="catbar">
+      <input id="catFilter" type="search" placeholder="filter by number, place or collection" autocomplete="off">
+      <select id="catSort" aria-label="Sort">
+        <option value="id">by KH number</option>
+        <option value="n">most cords</option>
+        <option value="knots">most knots</option>
+        <option value="broken">most broken</option>
+        <option value="unknown">least recorded</option>
+      </select>
+      <span id="catCount"></span>
+    </div>
+    <div id="catList" role="list"></div>
+  </div>
+</div>
+
+<!-- ───────── about ───────── -->
+<div id="about" class="overlay" hidden>
+  <div class="card wide prose">
+    <div class="cardhead">
+      <h2>About this instrument</h2>
+      <button class="close" data-close="about" aria-label="Close">×</button>
+    </div>
+
+    <h3>What you are hearing</h3>
+    <table class="map">
+      <tr><th>in the archive</th><th>in the instrument</th></tr>
+      <tr><td>cord length, in centimetres</td><td>pitch. The cord is treated as a string: 6600 ÷ cm gives hertz, so a 30 cm cord sounds 220 Hz. No scale is applied; the tuning is whatever the lengths are.</td></tr>
+      <tr><td>cord colour</td><td>brightness and ring time. Pale cotton rings long, dark cords are dull and short.</td></tr>
+      <tr><td>knot position along the cord</td><td>a partial above the cord, at the ratio (cord length ÷ knot position), like a finger resting on a string.</td></tr>
+      <tr><td>knot type</td><td>single knots ping once each. A long knot of <i>n</i> turns is a roll of <i>n</i> grains. A figure-eight knot beats against itself.</td></tr>
+      <tr><td>knot direction, S or Z</td><td>left or right. Where direction was not recorded the knot sits in the middle and is partly noise.</td></tr>
+      <tr><td>termination</td><td>how the sound ends: <b>knotted</b> rings out; <b>broken</b> tears off with a crack; <b>cut</b> stops clean; <b>ravelled</b> splits into drifting strings; <b>doubled</b> adds the octave below; <b>canutito</b> (wrapped) is muted; <b>unfinished</b> holds level and then just ends.</td></tr>
+      <tr><td>position along the main cord</td><td>time, when you press Read; left to right in the speakers.</td></tr>
+      <tr><td>main cord length</td><td>the low hum underneath.</td></tr>
+      <tr><td>anything not recorded</td><td>breath. A cord with no measured length has no pitch at all.</td></tr>
+    </table>
+
+    <h3>What is imposed</h3>
+    <p>The khipus are undeciphered and this instrument does not decode them. Turning position into time, and length into pitch, are our choices. They translate measurements, and a measurement is already somebody's decision about what counted. Pendant attachment, for example, was not treated as a sign until the 1970s, and for
+      <span data-stat="unknown_attachment">26,371</span> cords the archive has no attachment at all.</p>
+    <p>The wear is ours too. It compresses centuries of handling into minutes so that you can watch the difference between a thing and its record: the left column of the ledger never changes, whatever happens to the cord.</p>
+
+    <h3>What the archive does not know</h3>
+    <ul class="unknowns">
+      <li><b data-stat="khipus_no_provenance">221</b> of <span data-stat="khipus">619</span> khipus have no recorded place of origin.</li>
+      <li><b data-stat="khipus_no_date">619</b> have no recorded date of discovery; <b data-stat="khipus_no_discoverer">617</b> name no finder.</li>
+      <li><b data-stat="broken">9,392</b> cords are recorded as broken, <b data-stat="unfinished">3,000</b> as unfinished, <b data-stat="ravelled">2,190</b> as ravelled.</li>
+      <li><b data-stat="cords_no_knots">17,321</b> cords carry no knots. <b data-stat="knot_dir_unknown">12,566</b> knots have no recorded direction.</li>
+      <li><b data-stat="abroad">345</b> of the 619 are held outside Peru, <b data-stat="germany">179</b> of them in Germany.</li>
+    </ul>
+
+    <h3>Sources</h3>
+    <p>Data: the <a href="https://github.com/khipulab/open-khipu-repository" target="_blank" rel="noopener">Open Khipu Repository</a> (khipu.db, MIT licence, doi:10.5281/zenodo.18025748), which is the database the <a href="https://www.khipufieldguide.com/" target="_blank" rel="noopener">Khipu Field Guide</a> is built on. The words describing terminations, fibres and knots are quoted from its dictionary tables. The repository describes itself as “one artifact of colonialist Archaeology and Anthropology”; this instrument is another translation stacked on top of that one.</p>
+    <p>Made with the Web Audio API and Canvas. No libraries, no samples, no network.</p>
+  </div>
+</div>
+
+<script src="data/index.js"></script>
+<script src="js/audio.js"></script>
+<script src="js/khipu.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>

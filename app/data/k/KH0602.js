@@ -1,0 +1,1 @@
+window.KHIPU_LOAD({"id":"KH0602","inv":"QU14","prov":"","museum":"Dallas Museum of Art","city":"Dallas, TX","country":"USA","plen":80,"pcol":"","pbeg":"","pterm":"","pnotes":"","by":"","date":"","notes":"","xrec":0,"cords":[]});

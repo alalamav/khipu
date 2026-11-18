@@ -1,0 +1,79 @@
+{
+  "source": "Open Khipu Repository, khipu.db (MIT). https://github.com/khipulab/open-khipu-repository  doi:10.5281/zenodo.18025748",
+  "counts": {
+    "khipus": 619,
+    "khipus_no_discoverer": 617,
+    "khipus_no_date": 619,
+    "cords": 54403,
+    "unknown_fiber": 23001,
+    "unknown_attachment": 26371,
+    "unknown_colour": 1564,
+    "khipus_no_provenance": 221,
+    "unknown_twist": 9432,
+    "cords_no_length": 2278,
+    "cords_no_knots": 17321,
+    "unknown_length": 2278,
+    "unknown_termination": 1709,
+    "khipus_no_cords": 7,
+    "knots": 110151
+  },
+  "total_cord_metres": 16678.5,
+  "terminations": {
+    "K": 37692,
+    "B": 9392,
+    "U": 3000,
+    "R": 2190,
+    "(blank)": 1709,
+    "TT": 359,
+    "D": 54,
+    "C": 7
+  },
+  "knot_types": {
+    "S": 74642,
+    "L": 26291,
+    "E": 8333,
+    "(none)": 405,
+    "SP": 246,
+    "TF": 128,
+    "EE": 75,
+    "LL": 17,
+    "BL": 14
+  },
+  "knot_directions": {
+    "Z": 65884,
+    "S": 31701,
+    "U": 12566
+  },
+  "countries": {
+    "Peru": 274,
+    "Germany": 179,
+    "USA": 106,
+    "Sweden": 20,
+    "France": 16,
+    "Chile": 12,
+    "Netherlands": 4,
+    "Ecuador": 2,
+    "Switzerland": 2,
+    "England": 1,
+    "Austria": 1,
+    "Canada": 1,
+    "Czech Republic": 1
+  },
+  "collections_top": {
+    "Ethnologisches Museum": 154,
+    "Complejo arqueológico Inkawasi": 52,
+    "Museo Nacional de Arqueología, Antropología e Historia del Perú": 49,
+    "American Museum of Natural History": 33,
+    "Museo Regional de Ica Adolfo Bermúdez Jenkins": 32,
+    "Museo de Sitio de Pachacamac": 32,
+    "Biblioteca Museo Temple Radicati": 28,
+    "Museo de Sitio Arturo Jiménez Borja – Puruchuco": 24,
+    "Centro Mallqui, Museo Leymebamba": 22,
+    "Världskulturmuseet": 20,
+    "Dallas Museum of Art": 18,
+    "Museum Fünf Kontinente": 17,
+    "Musée du quai Branly - Jacques Chirac": 16,
+    "Penn Museum": 14,
+    "Peabody Museum of Archaeology and Ethnology": 13
+  }
+}
