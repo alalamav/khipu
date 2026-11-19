@@ -1,0 +1,117 @@
+@import "tailwindcss";
+
+/*
+ * Dark, monochrome, muted. The interface is drawn in greys only; the one
+ * place colour appears is on the cords, where it is data.
+ */
+@theme {
+  --font-serif: "Iowan Old Style", "Palatino Linotype", Palatino, "Book Antiqua", Georgia, serif;
+  --font-mono: ui-monospace, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+
+  --color-ground: #0c0c0d;
+  --color-ground-raised: #141415;
+  --color-ink: #c4c4c4;
+  --color-ink-bright: #e9e9e9;
+  --color-ink-dim: #8a8a8a;
+  --color-ink-faint: #5d5d5d;
+  --color-line: rgb(255 255 255 / 0.1);
+
+  /* 980px: from here up the ledger stands beside the khipu instead of under it. */
+  --breakpoint-desk: 61.25rem;
+}
+
+@layer base {
+  html {
+    /* native menus and scrollbars in dark too */
+    color-scheme: dark;
+  }
+
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+
+  body {
+    margin: 0;
+    overflow: hidden;
+    background: radial-gradient(120% 90% at 50% 18%, #171718, #09090a 75%) var(--color-ground);
+    color: var(--color-ink);
+    font-family: var(--font-serif);
+    font-size: 15px;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  :focus-visible {
+    outline: 1px solid var(--color-ink-bright);
+    outline-offset: 2px;
+  }
+}
+
+@layer components {
+  /* The piece speaks in serif italic; the database speaks in monospace. */
+  .btn {
+    @apply inline-flex h-8 min-w-8 cursor-pointer items-center justify-center rounded-sm border border-line bg-white/5 px-3 font-mono text-xs whitespace-nowrap text-ink transition-colors hover:bg-white/10 hover:text-ink-bright;
+  }
+
+  .btn-primary {
+    @apply border-transparent bg-ink-bright/80 text-ground hover:bg-ink-bright hover:text-ground;
+  }
+
+  .btn-on {
+    @apply border-white/25 bg-white/15 text-ink-bright;
+  }
+
+  /* Text boxes and menus. */
+  .field {
+    @apply h-8 rounded-sm border border-line bg-white/5 px-3 font-mono text-xs text-ink placeholder:text-ink-faint;
+  }
+
+  /* One sign for everything that is missing: what was never recorded, and what has since been lost. */
+  .absent {
+    @apply font-serif text-ink-dim italic underline decoration-ink-faint decoration-dotted underline-offset-4;
+  }
+
+  .lost {
+    @apply underline decoration-ink-dim decoration-dotted underline-offset-4;
+  }
+
+  .slider {
+    -webkit-appearance: none;
+    appearance: none;
+    height: 22px;
+    background: transparent;
+    cursor: pointer;
+  }
+  .slider::-webkit-slider-runnable-track {
+    height: 1px;
+    background: var(--color-ink-faint);
+  }
+  .slider::-moz-range-track {
+    height: 1px;
+    background: var(--color-ink-faint);
+  }
+  .slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 11px;
+    height: 11px;
+    margin-top: -5px;
+    border: 0;
+    border-radius: 9999px;
+    background: var(--color-ink);
+  }
+  .slider::-moz-range-thumb {
+    width: 11px;
+    height: 11px;
+    border: 0;
+    border-radius: 9999px;
+    background: var(--color-ink);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition: none !important;
+  }
+}

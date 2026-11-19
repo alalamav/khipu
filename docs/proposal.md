@@ -16,15 +16,16 @@ A khipu is a knotted-cord record, made and read by hand. The surviving ones are 
 
 *Just Ends* translates one of those khipus back out of the tables into cord and raw clay, hangs it in a room, and lets it be read. Reading is touch, and each touch costs the object something. Knots loosen and fall, cords part, and a bed of sediment builds underneath. Beside it, a ledger shows each cord's row twice: what the archive says, which never changes, and what is still hanging, which only shrinks. When the main cord hangs empty, the makers re-tie it from the rows, and it starts again, slightly greyer.
 
-Three things are in this delivery:
+Four things are in this delivery:
 
 | | where |
 |---|---|
 | This proposal | here, and copied to `docs/proposal.md` in the project |
-| A working web prototype using all 619 khipus, with sound | `app/index.html` (open it directly) |
+| A working web prototype using all 619 khipus, with three sound voices | `app/` (run `npm ci`, then `npm run dev`; see the README) |
+| An account of each sound algorithm and of the database columns it reads | `docs/sound_algorithms.md` |
 | A tool that turns any khipu into a cord-by-cord making sheet at any scale | `tools/tying_score.py` |
 
-What I have and have not verified: the data pipeline, the model and the synthesis were tested programmatically (all 619 khipus load, lay out and wear down to nothing with consistent totals; every sound ending produces finite, unclipped audio; the audio path runs in Chrome without errors). **I have not heard it.** I had no way to listen, so the balance between cord and knot sounds, and the reverb level, are my best guess and are the first thing to adjust by ear.
+What I have and have not verified. The data pipeline, the library and the mappings are covered by automated tests: all 619 khipus load, lay out and can be sounded in every voice, with totals that match the archive's. The sound was measured in Chrome by rendering it offline and analysing the result: the operator voice is frequency modulation at the index its patch states, the resonator rings at the pitches of the knot values for the time it is given, the three voices are within about 2 dB of one another, and the output stays under full scale with the largest allowed number of cords sounding at once. The interface, and the swinging and falling of the cords, were checked from screenshots of headless Chrome. **I have not heard it, and I have not watched it move in real time.** I had no way to listen, so the balance between cord and knot sounds, the depth of the modulation and the reverb level are my best guess and are the first thing to adjust by ear.
 
 ---
 
@@ -181,7 +182,7 @@ So the sound has three layers, and only the first is computed:
 2. **The fall.** Contact microphones under the sediment bed pick up every fragment landing. This is real, acoustic and unrepeatable.
 3. **The main cord.** A low tone tuned to the main cord's length, present for as long as anything hangs.
 
-The mapping, which the prototype implements exactly:
+The first mapping, which is the prototype's **string** voice:
 
 | In the row | In the sound |
 |---|---|
@@ -195,19 +196,41 @@ The mapping, which the prototype implements exactly:
 
 I avoided mapping to a pentatonic or any "Andean-sounding" scale. That would be the sonic equivalent of a costume.
 
+### Three voices
+
+The prototype now reads each row three ways. The cord, its wear and its ending are the same in all three. What changes is which part of the row is taken to be the sound. Each is set out in full, with the database columns it reads and what was measured, in `docs/sound_algorithms.md`.
+
+| Voice | Takes the row as | What is heard |
+|---|---|---|
+| **String** | measurements | The table above |
+| **Operator** | relationships | Every cord is a sine tone. The cord that is touched is bent (frequency-modulated) by the cords tied onto it and by the cord hanging before it in its group: how fast, by the proportion between the two cords' numbers; how deeply, by how much of the pair's number the other cord carries |
+| **Resonator** | numbers | The cord is struck and a bank of resonant filters rings, one for each cluster of knots, tuned by its value: the digits 1 to 9 across an octave, each power of ten an octave higher. The length of the cord plays no part |
+
+What each one says, and what it costs:
+
+- **Operator.** A cord cannot be heard apart from what is tied to it. When a subsidiary falls, the cord it hung from loses a modulator, and when all have fallen it is a bare sine tone. The khipu gets simpler as it empties, and what is heard to go is relation, not loudness. In the archive two cords in three have at least one such relation before anything is worn. The voice does not look for sums (section 9): only 531 of the 8,985 cords that carry subsidiaries have subsidiaries that add up to them, and treating a tie as arithmetic would be decipherment by another door. It treats a tie as an influence, which is also a claim.
+- **Resonator.** Equal numbers sound the same in every khipu, on a cord of any length or colour. This is the voice that takes the database's decimal values at their word, and it is the most legible of the three: a listener could learn to hear a 3. That is its attraction and its problem. When the knots have fallen the cord only taps.
+- **String.** Still the voice that claims least. It sounds what was measured.
+
+For the installation this is a decision to make by ear (section 8). It changes little in the hardware: all three are computed from what is still hanging, so all three follow the load cells in the same way.
+
 ---
 
 ## 5. The prototype
 
 ### What it is
 
-A static web app. Open `app/index.html`; there is no server, build step or network access. It uses the Web Audio API and Canvas, with no libraries and no samples. All 619 khipus are in it.
+A web app in TypeScript: React for the interface, three.js for the khipu, Tone.js for the sound, Tailwind for the styles, built with Vite. Run `npm ci` and `npm run dev` in `app/`; `npm run build` writes a static site that any web server can serve. All 619 khipus are in it. There are no samples: every sound is computed from a row. The interface is dark and monochrome, and the only colour on screen is the recorded colour of the cords.
 
-![A khipu as first loaded: KH0279, drawn in the proportions the archive recorded. The ledger shows one cord's row.](img/proto_fresh.png)
+The cords are simulated as ropes. A touched cord swings and comes back to rest. A cord that parts or comes away falls, bends as it falls, folds where it lands and stays there, on a bed that builds up under the khipu.
 
-![The same khipu after six readings. About half the cords and four fifths of the knots have fallen. The ledger shows a fallen cord: the archive column is intact.](img/proto_worn.png)
+![A khipu as first loaded: KH0279, drawn in the proportions the archive recorded. The ledger shows the khipu's record.](img/proto_fresh.png)
 
-![Close view of KH0438. Single knots are stacked dots, long knots are bars, two-colour cords are dashed.](img/proto_close.png)
+![The same khipu during a reading at full wear. Under the hand a cord is in the air; the cords that fell before it lie folded on the bed with their knots. In the tally a dotted underline marks each number that is no longer what the archive says.](img/proto_worn.png)
+
+![Close view of KH0438. Knots sit on the cords where they were tied; cords spun from two colours are striped; a broken end is frayed.](img/proto_close.png)
+
+![The operator voice. Under the row of the cord in hand, the ledger lists the cords that modulate it, with the proportion and the depth of each.](img/proto_operator.png)
 
 ![The end state. The main cord keeps a mark where each pendant hung.](img/proto_end.png)
 
@@ -216,7 +239,8 @@ A static web app. Open `app/index.html`; there is no server, build step or netwo
 - Move across the cords to sound them, like a hand passing over them.
 - Press **Read** for a full pass along the main cord. It repeats.
 - Set **wear** from "gloves" (nothing is lost) to "centuries".
-- Watch the ledger: archive on the left, now on the right.
+- Choose a **voice**: string, operator or resonator.
+- Watch the ledger: archive on the left, now on the right, and under them what the voice makes of the cord in hand.
 - **Re-tie** from the archive. The sediment from before stays.
 - Open the catalogue and sort the 619 by size, by how broken they are, or by how little was recorded.
 
@@ -227,7 +251,7 @@ It lets you make four decisions before buying anything:
 1. **Which khipu.** Size, density, how many kinds of ending, how much is unknown.
 2. **How fast.** Whether the arc from full to empty should take an hour or a month.
 3. **Whether to re-tie.**
-4. **Whether the sound mapping holds up** over twenty minutes of listening, which is the test that matters.
+4. **Which voice, and whether it holds up** over twenty minutes of listening, which is the test that matters.
 
 ### What it cannot tell you
 
@@ -238,7 +262,7 @@ It lets you make four decisions before buying anything:
 ### Other tools
 
 - **Blender** is worth using next for one purpose: a to-scale model of the chosen khipu in the actual room, generated from the tying-score CSV, to settle scale and sightlines.
-- **TouchDesigner** only becomes useful if you add projection or camera sensing. For load cells, a stepper and audio, it adds nothing the browser and a microcontroller cannot do. The prototype's synthesis function is written to run without a browser so it can move to whatever runs the installation.
+- **TouchDesigner** only becomes useful if you add projection or camera sensing. For load cells, a stepper and audio, it adds nothing the browser and a microcontroller cannot do. The string voice and the mappings of the other two voices are plain functions with no browser in them, so they can move to whatever runs the installation; only the parts that play the operator and resonator voices depend on Web Audio.
 
 ---
 
@@ -333,7 +357,7 @@ This assumes the two of you part-time with occasional help, and it is a planning
 
 | Weeks | Work |
 |---|---|
-| 1 to 3 | Milestone 0. Use the prototype together to shortlist khipus and decide on re-tying. Tune the sound by ear |
+| 1 to 3 | Milestone 0. Use the prototype together to shortlist khipus and decide on re-tying. Choose the voice and tune it by ear |
 | 2 to 8 | Milestone 1. Clay tests run in parallel with the single-cord rig. First ten cords spun and timed |
 | 8 to 16 | Milestone 2. Build the rail and ledger. Week-long run. Decide: go, change, or stop |
 | 16 to 28 | Milestone 3. Spinning and dyeing is the long task. Electronics and software are finished around it |
@@ -362,6 +386,8 @@ About nine months. The fibre work sets the pace. The software will not.
 
 4. **How much the screen says.** The ledger could be one cord's row and nothing else. I would resist adding explanation to it.
 
+5. **Which voice.** One voice for the whole run; or one a day; or the three as successive passes of the hand, so that each reading makes a different claim about the same rows: measured, related, counted. My guess, which only listening can test, is that the operator voice suits the arc of the piece best, because it is the one in which loss is heard as simplification, and that the string voice should stay as the reference.
+
 ---
 
 ## 9. Directions I considered and set aside
@@ -374,7 +400,7 @@ About nine months. The fibre work sets the pace. The software will not.
 
 ## 10. Sources and what needs checking
 
-**Measured by me from the database:** every count and percentage in section 2, the three candidates in section 8, and all behaviour described for the prototype. The numbers are regenerated by `tools/build_data.py` into `docs/archive_stats.json`.
+**Measured by me from the database:** every count and percentage in section 2, the figures for the operator voice in section 4, the three candidates in section 8, and all behaviour described for the prototype. The numbers are regenerated by `tools/build_data.py` into `docs/archive_stats.json`.
 
 **Read on the Khipu Field Guide site:** the 703-khipu figure; that attachment was not treated as a sign until the 1970s; that colours have faded and colour matching is approximate; that KH0082 and KH0084 are missing and their entries suspect; Locke's 1912 decimal reading.
 

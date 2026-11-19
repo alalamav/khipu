@@ -1,48 +1,47 @@
 {
   "source": "Open Khipu Repository, khipu.db (MIT). https://github.com/khipulab/open-khipu-repository  doi:10.5281/zenodo.18025748",
-  "counts": {
-    "khipus": 619,
-    "khipus_no_discoverer": 617,
-    "khipus_no_date": 619,
-    "cords": 54403,
-    "unknown_fiber": 23001,
-    "unknown_attachment": 26371,
-    "unknown_colour": 1564,
-    "khipus_no_provenance": 221,
-    "unknown_twist": 9432,
-    "cords_no_length": 2278,
-    "cords_no_knots": 17321,
-    "unknown_length": 2278,
-    "unknown_termination": 1709,
-    "khipus_no_cords": 7,
-    "knots": 110151
+  "khipus": 619,
+  "cords": 54403,
+  "knots": 110151,
+  "cordMetres": 16678.5,
+  "khipusWithoutProvenance": 221,
+  "khipusWithoutDiscoverer": 617,
+  "khipusWithoutDate": 619,
+  "khipusWithoutCords": 7,
+  "cordsWithoutKnots": 17321,
+  "notRecorded": {
+    "termination": 1709,
+    "twist": 9432,
+    "attachment": 26371,
+    "fiber": 23001,
+    "length": 2278,
+    "colour": 1564
   },
-  "total_cord_metres": 16678.5,
   "terminations": {
     "K": 37692,
     "B": 9392,
     "U": 3000,
     "R": 2190,
-    "(blank)": 1709,
+    "notRecorded": 1709,
     "TT": 359,
     "D": 54,
     "C": 7
   },
-  "knot_types": {
+  "knotTypes": {
     "S": 74642,
     "L": 26291,
     "E": 8333,
-    "(none)": 405,
+    "notRecorded": 405,
     "SP": 246,
     "TF": 128,
     "EE": 75,
     "LL": 17,
     "BL": 14
   },
-  "knot_directions": {
+  "knotDirections": {
     "Z": 65884,
     "S": 31701,
-    "U": 12566
+    "notRecorded": 12566
   },
   "countries": {
     "Peru": 274,
@@ -59,7 +58,7 @@
     "Canada": 1,
     "Czech Republic": 1
   },
-  "collections_top": {
+  "collections": {
     "Ethnologisches Museum": 154,
     "Complejo arqueológico Inkawasi": 52,
     "Museo Nacional de Arqueología, Antropología e Historia del Perú": 49,
