@@ -70,7 +70,7 @@ export function About({ stats, onClose }: { stats: ArchiveStats | null; onClose:
             ],
             [
               'cord colour',
-              'ring time. Pale cotton rings long, dark cords are short. A cord with no recorded colour rings like a mid-brown one.',
+              'ring time, which is also how long the cord swings. Pale cotton rings long, dark cords are short. A cord with no recorded colour rings like a mid-brown one.',
             ],
             ['position along the main cord', 'time, when you press Read; left to right in the speakers.'],
             [

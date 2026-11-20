@@ -10,7 +10,7 @@
  */
 import { createHash } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
-import { DURATION, UNPITCHED_DURATION, cordFrequency, type CordSound } from '../src/audio/cordSound';
+import { UNPITCHED_DURATION, cordFrequency, durationOf, type CordSound } from '../src/audio/cordSound';
 import { knotPartial, synthString } from '../src/audio/stringVoice';
 import { knot } from './fixtures';
 
@@ -57,8 +57,9 @@ type Golden = readonly [label: string, spec: CordSound, digest: string];
 /**
  * Cords that between them take every branch of the string voice (synthString
  * and what it calls), each with a digest of the samples it gave when these
- * were taken: when the string voice was, as its header promises,
- * sample-identical to the first prototype.
+ * were taken. (The voice began sample-identical to the first prototype. The
+ * digests were taken again when its endings were softened, and when a cord
+ * was made to ring for as long as it swings.)
  *
  * The digests are here to notice ANY change in what is heard: a sum taken in
  * another order, or one more call to the random generator, is enough. A
@@ -66,7 +67,7 @@ type Golden = readonly [label: string, spec: CordSound, digest: string];
  * bytes followed by the right's, rendered at 48 kHz.
  *
  * When a row fails and the sound was not meant to change, the voice has
- * drifted from the prototype: put the voice right, not the digest. When the
+ * drifted: put the voice right, not the digest. When the
  * change is meant, run `npx vitest run tests/stringVoice.test.ts`: every
  * stale row is reported under its label, as
  *   expected '<the digest now>' to be '<the digest here>'
@@ -80,20 +81,20 @@ type Golden = readonly [label: string, spec: CordSound, digest: string];
  */
 const GOLDEN: readonly Golden[] = [
   // ---- how the cord ends ----
-  ['knotted', cordSound({ termination: 'K' }), 'f23244ed50974037'],
-  ['broken', cordSound({ termination: 'B' }), '1a0591358857dd9b'],
-  ['cut', cordSound({ termination: 'C' }), '361aa3c156afc960'],
-  ['ravelled', cordSound({ termination: 'R' }), '85cf668d39a69489'],
-  ['doubled', cordSound({ termination: 'D' }), '0337cb0afaf5bb48'],
-  ['unfinished', cordSound({ termination: 'U' }), '61b3110e4725a89c'],
+  ['knotted', cordSound({ termination: 'K' }), '553c90441230553c'],
+  ['broken', cordSound({ termination: 'B' }), 'c7f2201291b1d58b'],
+  ['cut', cordSound({ termination: 'C' }), '7cad24bf05ac9250'],
+  ['ravelled', cordSound({ termination: 'R' }), 'c1f03b2206e6c9d6'],
+  ['doubled', cordSound({ termination: 'D' }), 'aaca1ed3ac39b165'],
+  ['unfinished', cordSound({ termination: 'U' }), '5a23620a9906e2fa'],
   ['canutito', cordSound({ termination: 'TT' }), 'c7d2c6a7b6bc3895'],
-  ['termination not recorded', cordSound({ termination: null }), 'a725c482adbc1359'],
+  ['termination not recorded', cordSound({ termination: null }), '5da06e033fbfde3c'],
   // ---- what else its row may say ----
   // no pitch: only breath; its knot can only tick; and though the cord is broken there is no string to tear
   ['length not recorded', cordSound({ length: null, termination: 'B', knots: [knot({ position: 12, direction: 'Z' })] }), '53daf51710010dd8'],
   // 22 Hz, folded up two octaves to 88
-  ['three metres long, at the left end of the main cord', cordSound({ length: 300, pan: -0.7 }), 'a6a07bdb283c33f4'],
-  ['worn', cordSound({ integrity: 0.4 }), '57f612449e059ed3'],
+  ['three metres long, at the left end of the main cord', cordSound({ length: 300, pan: -0.7 }), '364111a9de4e4c63'],
+  ['worn', cordSound({ integrity: 0.4 }), 'c43ad12cdd9561af'],
   // ---- knots ----
   [
     'knots as recorded, at the right end of the main cord',
@@ -106,7 +107,7 @@ const GOLDEN: readonly Golden[] = [
         knot({ position: 36, type: 'E', value: 1, direction: 'Z' }), // a figure-eight
       ],
     }),
-    'bd0468967958ea8a',
+    'c6f94e2915170b8e',
   ],
   [
     'knots partly recorded',
@@ -117,7 +118,7 @@ const GOLDEN: readonly Golden[] = [
         knot({ type: 'E', value: 1 }), // neither, and a figure-eight: two ticks at once
       ],
     }),
-    '2510addfcf6c9056',
+    'c24bdde15ebfcb14',
   ],
   [
     'at the limits',
@@ -157,11 +158,18 @@ describe('every sound of the string voice', () => {
 
   it('lasts the time set for the way the cord ends, or the time set for a cord with no pitch', () => {
     for (const [label, spec] of GOLDEN) {
-      const seconds = spec.length === null ? UNPITCHED_DURATION : DURATION[spec.termination ?? ''];
+      const seconds = spec.length === null ? UNPITCHED_DURATION : durationOf(spec.termination, spec.lightness);
       const samples = Math.floor(seconds * SAMPLE_RATE);
       const { L, R } = synthString(spec, SAMPLE_RATE);
       expect([L.length, R.length], label).toEqual([samples, samples]);
     }
+  });
+
+  it('leaves the crack out of a broken cord when clicks are off, and changes nothing else', () => {
+    const [, broken] = GOLDEN.find(([label]) => label === 'broken')!;
+    const [, knotted] = GOLDEN.find(([label]) => label === 'knotted')!;
+    expect(digest(synthString(broken, SAMPLE_RATE, false))).not.toBe(digest(synthString(broken, SAMPLE_RATE)));
+    expect(digest(synthString(knotted, SAMPLE_RATE, false))).toBe(digest(synthString(knotted, SAMPLE_RATE)));
   });
 
   it('stays at or below half of full scale', () => {

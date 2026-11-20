@@ -43,8 +43,18 @@ export interface PluckOptions {
 }
 
 /** Sounds at once, per voice. Beyond this a touch is not sounded. */
-const MAX_VOICES: Readonly<Record<VoiceKind, number>> = { string: 30, operator: 16, resonator: 20 };
+const MAX_VOICES: Readonly<Record<VoiceKind, number>> = { string: 60, operator: 32, resonator: 28 };
 const CACHE_SIZE = 96;
+
+/** The floor answers a grain at one of these multiples of the main cord's hum: the darker the cord, the lower. */
+const FLOOR_HARMONICS = [3, 4, 5, 6, 8, 10, 12] as const;
+/** The floor's echo comes back after this many turns of the hum: 0.19 to 0.38 s. */
+const ECHO_TURNS = 16;
+/** The hum of a main cord that was never measured, in Hz. */
+const DEFAULT_HUM = 55;
+
+/** The level of the hum. */
+const HUM_LEVEL = 0.085;
 
 interface Drone {
   out: Tone.Gain;
@@ -65,6 +75,14 @@ export class AudioEngine {
   private drone: Drone | null = null;
   /** Length of the main cord the hum is for; null is silence; undefined is "nothing asked yet". */
   private droneLength: number | null | undefined = undefined;
+  /** The pitch of the hum, in Hz. The floor is tuned to it. */
+  private hum = DEFAULT_HUM;
+  /** The hum is heard. Silenced, it still tunes the floor and times its echo. */
+  private humOn = true;
+  /** How much of the khipu has gone, 0 to 1. */
+  private erosion = 0;
+  /** The snap of a cord parting and the crack of a torn or cut cord are heard. */
+  private clicks = true;
 
   /**
    * Bring the engine up. Browsers only let audio begin from a click or a key
@@ -74,6 +92,8 @@ export class AudioEngine {
     if (!this.bus) {
       Tone.getContext().lookAhead = 0;
       this.bus = new Bus(this.volume);
+      this.bus.setErosion(this.erosion);
+      this.bus.clicks = this.clicks;
       if (this.droneLength !== undefined) this.buildDrone(this.droneLength);
     }
     void Tone.start();
@@ -137,11 +157,13 @@ export class AudioEngine {
   }
 
   private playString(bus: Bus, sound: CordSound, key: string, gain: number, time: number, done: () => void): void {
-    let buffer = this.cache.get(key);
+    // The crack of a broken or cut cord is part of what is rendered, so a sound is kept with or without it.
+    const kept = this.clicks ? key : key + ':quiet';
+    let buffer = this.cache.get(kept);
     if (!buffer) {
-      const samples = synthString(sound, bus.sampleRate);
+      const samples = synthString(sound, bus.sampleRate, this.clicks);
       buffer = Tone.ToneAudioBuffer.fromArray([samples.L, samples.R]);
-      this.cache.set(key, buffer);
+      this.cache.set(kept, buffer);
       if (this.cache.size > CACHE_SIZE) {
         const oldest = this.cache.keys().next().value;
         if (oldest !== undefined) this.cache.delete(oldest);
@@ -158,21 +180,39 @@ export class AudioEngine {
     source.start(time);
   }
 
-  /** A grain of a fallen knot reaching the floor. */
-  tick(pan: number, brightness: number): void {
+  /** A grain of a fallen knot reaching the floor. `rising`: its echoes climb; otherwise they sink. */
+  tick(pan: number, brightness: number, rising: boolean): void {
     const bus = this.bus;
     if (!bus || !this.ready) return;
     const now = bus.now;
     if (now - this.lastTick < 0.035) return;
     this.lastTick = now;
-    bus.burst(now, 1800 + 5000 * (brightness || 0.5) * Math.random(), 6, 0.09, 0.03, pan, Math.random() * 0.4);
+    const light = Number.isFinite(brightness) ? Math.max(0, Math.min(1, brightness)) : 0.5;
+    // The floor knocks, at a harmonic of the hum; and a little dust, lower and slower than a click.
+    const step = Math.floor((0.7 * light + 0.3 * Math.random()) * FLOOR_HARMONICS.length);
+    const harmonic = FLOOR_HARMONICS[Math.min(FLOOR_HARMONICS.length - 1, step)];
+    const door = bus.floorDoor(rising);
+    bus.tok(now, this.hum * harmonic, 0.028, 0.06, pan, door);
+    bus.burst(now, 700 + 1500 * light * Math.random(), 3, 0.03, 0.05, pan, Math.random() * 0.4, 0.004, door);
   }
 
-  /** A cord parting. */
-  snap(pan: number): void {
+  /**
+   * How much of the khipu has gone: 0 whole, 1 bare. The more has gone, the more of what
+   * happens on the floor is echo.
+   */
+  setErosion(erosion: number): void {
+    this.erosion = erosion;
+    this.bus?.setErosion(erosion);
+  }
+
+  /** A cord parting. `rising`: its echoes climb; otherwise they sink. */
+  snap(pan: number, rising: boolean): void {
     const bus = this.bus;
-    if (!bus || !this.ready) return;
-    bus.burst(bus.now, 900 + Math.random() * 700, 1.2, 0.5, 0.09, pan, Math.random() * 0.3);
+    if (!bus || !this.ready || !this.clicks) return;
+    const now = bus.now;
+    const door = bus.floorDoor(rising);
+    bus.burst(now, 500 + Math.random() * 400, 1, 0.3, 0.14, pan, Math.random() * 0.3, 0.005, door);
+    bus.tok(now, this.hum * 2, 0.06, 0.1, pan, door);
   }
 
   /**
@@ -182,6 +222,18 @@ export class AudioEngine {
   setDrone(lengthCm: number | null): void {
     this.droneLength = lengthCm;
     if (this.bus) this.buildDrone(lengthCm);
+  }
+
+  /** Let the clicks be heard, or silence them: the snap of a cord parting, and the crack of a torn or cut cord. */
+  setClicks(on: boolean): void {
+    this.clicks = on;
+    if (this.bus) this.bus.clicks = on;
+  }
+
+  /** Let the hum be heard, or silence it. */
+  setHum(on: boolean): void {
+    this.humOn = on;
+    if (this.bus && this.drone) this.drone.out.gain.setTargetAtTime(on ? 1 : 0, this.bus.now, 0.3);
   }
 
   private buildDrone(lengthCm: number | null): void {
@@ -196,26 +248,30 @@ export class AudioEngine {
     }
     if (lengthCm === null) return;
 
-    let f = lengthCm > 0 ? PITCH_K / lengthCm : 55; // an unmeasured main cord hums at a default
+    let f = lengthCm > 0 ? PITCH_K / lengthCm : DEFAULT_HUM; // an unmeasured main cord hums at a default
     while (f < 42) f *= 2;
     while (f > 84) f /= 2;
+    this.hum = f;
+    bus.setEchoTime(ECHO_TURNS / f);
     const o1 = new Tone.ToneOscillatorNode({ frequency: f, type: 'triangle' });
     const o2 = new Tone.ToneOscillatorNode({ frequency: f * 1.5 + 0.3, type: 'sine' });
     const lfo = new Tone.ToneOscillatorNode({ frequency: 0.07, type: 'sine' });
     const sway = new Tone.Gain(0.02);
     const lowpass = new Tone.BiquadFilter({ type: 'lowpass', frequency: 320 });
-    const out = new Tone.Gain(0);
-    out.gain.setTargetAtTime(0.085, t, 1.5);
+    const level = new Tone.Gain(0);
+    level.gain.setTargetAtTime(HUM_LEVEL, t, 1.5);
+    // The switch comes after the level, which sways: a swaying level turned to nothing would still be heard.
+    const out = new Tone.Gain(this.humOn ? 1 : 0);
     lfo.connect(sway);
-    sway.connect(out.gain);
+    sway.connect(level.gain);
     o1.connect(lowpass);
     o2.connect(lowpass);
-    lowpass.chain(out, bus.input);
+    lowpass.chain(level, out, bus.input);
     for (const osc of [o1, o2, lfo]) osc.start(t);
     this.drone = {
       out,
       dispose: () => {
-        for (const node of [o1, o2, lfo, sway, lowpass, out]) node.dispose();
+        for (const node of [o1, o2, lfo, sway, lowpass, level, out]) node.dispose();
       },
     };
   }

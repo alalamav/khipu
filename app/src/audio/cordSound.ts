@@ -71,24 +71,45 @@ export function cordFrequency(lengthCm: number | null): number {
   return f;
 }
 
-/** Seconds of sound for each way of ending; '' is "not recorded". */
+/**
+ * Seconds a cord of this lightness rings: pale cotton rings longer.
+ *
+ * It is also how long the cord swings. A touched cord is pushed, and the stage hangs each cord so that
+ * its swing has died away to about a thirtieth in this time (see `tiedDrag` in RopeSim): a cord is heard
+ * for about as long as it is seen to move. The sound falls by 60 dB in it.
+ */
+export function ringTime(lightness: number): number {
+  return 4.5 + 3 * lightness;
+}
+
+/**
+ * How much of its ring time a cord is given to sound in, for each way of ending; '' is "not recorded".
+ * Two endings are not a share of the ring, and are 0 here: see FIXED_DURATION.
+ */
 export const DURATION: Readonly<Record<TerminationCode | '', number>> = {
-  K: 2.4,
-  B: 1.5,
-  C: 0.9,
-  R: 2.6,
-  U: 1.7,
-  D: 2.6,
-  TT: 0.75,
-  '': 1.4,
+  K: 1,
+  B: 0.6,
+  C: 0,
+  R: 1,
+  U: 0.7,
+  D: 1.1,
+  TT: 0,
+  '': 0.6,
 };
+
+/**
+ * Seconds of sound for the two endings that silence a cord however long it swings: a cut cord
+ * stops at once, and a cord wrapped in thread (canutito) is damped.
+ */
+export const FIXED_DURATION: Readonly<Partial<Record<TerminationCode, number>>> = { C: 0.9, TT: 0.75 };
 
 /** Seconds of sound for a cord with no pitch at all. */
 export const UNPITCHED_DURATION = 1.2;
 
-/** Seconds a cord of this lightness rings: pale cotton rings longer. */
-export function ringTime(lightness: number): number {
-  return 0.9 + 1.6 * lightness;
+/** Seconds of sound for a cord that ends this way (null: not recorded) and is this light. */
+export function durationOf(termination: TerminationCode | null, lightness: number): number {
+  const fixed = termination ? FIXED_DURATION[termination] : undefined;
+  return fixed ?? DURATION[termination ?? ''] * ringTime(clamp01(lightness));
 }
 
 export function clamp01(v: number): number {

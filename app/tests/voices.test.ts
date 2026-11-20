@@ -27,14 +27,15 @@ describe('what all voices share', () => {
 
   it('rings pale cords longer than dark ones', () => {
     expect(ringTime(1)).toBeGreaterThan(ringTime(0));
-    expect(ringTime(1)).toBeCloseTo(2.5);
+    expect(ringTime(1)).toBeCloseTo(7.5);
   });
 
   it('ends a sound the way the cord ends', () => {
     const end = (termination: CordSound['termination']) => endingOf(cordSound({ termination }), 220, mulberry32(1));
     expect(end('K').stop).toBeNull();
     expect(end('B').stop?.crack).toBeGreaterThan(0); // torn off
-    expect(end('C').stop?.fade).toBeLessThan(0.001); // a clean edge
+    expect(end('C').stop?.fade).toBeLessThan(0.005); // a clean edge, but not a click
+    expect(end('C').stop!.fade).toBeLessThan(end('B').stop!.fade);
     expect(end('R').strands).toHaveLength(4); // the plies come apart
     expect(end('D').strands.map((s) => s.ratio)).toEqual([1, 0.5]); // doubled over: the octave below
     expect(end('TT').strands[0].ring).toBeLessThan(0.2); // wrapped: damped

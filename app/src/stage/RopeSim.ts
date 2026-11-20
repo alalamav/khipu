@@ -26,6 +26,15 @@ const MIN_FOLD = 0.5;
 const DRAG_TIED = 0.985;
 const DRAG_FREE = 0.996;
 const FLOOR_GRIP = 0.45;
+/**
+ * The share of velocity a tied rope keeps per step, for its swing to die away to about a thirtieth
+ * (3%) in `seconds`. Measured, not derived: the length constraints take a little motion out too, so a
+ * rope comes to rest about 1.3 times sooner than its drag alone would have it. At 6 s this is DRAG_TIED.
+ */
+export function tiedDrag(seconds: number): number {
+  return 1 - 0.09 / Math.max(0.5, seconds);
+}
+
 /** A rope moving less than this per step (cm) is still… */
 const STILL = 0.0035;
 /** …and after this many still steps it sleeps. */
@@ -68,6 +77,8 @@ export class Rope {
   standoff: [number, number, number] | null = null;
   /** -1 while a rope that is drawn upward is still tied on. */
   gravity: 1 | -1 = 1;
+  /** Share of velocity kept per step while the rope is tied on. See `tiedDrag`. */
+  drag = DRAG_TIED;
   /** No longer hanging: falling, or lying on the floor. */
   free = false;
   awake = false;
@@ -419,7 +430,7 @@ export class RopeSim {
       }
 
       // ---- move ---------------------------------------------------
-      const drag = rope.free ? DRAG_FREE : DRAG_TIED;
+      const drag = rope.free ? DRAG_FREE : rope.drag;
       const gy = -fall * rope.gravity;
       for (let i = first; i < n; i++) {
         const k = 3 * i;

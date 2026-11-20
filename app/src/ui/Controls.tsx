@@ -175,7 +175,25 @@ export function Controls({
           )}
         </Group>
 
-        <Slider label="sound" title="Volume" min={0} max={1} value={state.volume} onChange={(v) => piece.setVolume(v)} />
+        <Group>
+          <Slider label="sound" title="Volume" min={0} max={1} value={state.volume} onChange={(v) => piece.setVolume(v)} />
+          <button
+            className={'btn' + (state.hum ? ' btn-on' : '')}
+            aria-pressed={state.hum}
+            onClick={() => piece.setHum(!state.hum)}
+            title="The low hum of the main cord: on or off"
+          >
+            hum
+          </button>
+          <button
+            className={'btn' + (state.clicks ? ' btn-on' : '')}
+            aria-pressed={state.clicks}
+            onClick={() => piece.setClicks(!state.clicks)}
+            title="The snap of a cord parting and the crack of a broken or cut cord: on or off"
+          >
+            clicks
+          </button>
+        </Group>
 
         <Group>
           <button className="btn" onClick={() => piece.zoom(1 / 1.5)} title="Step back" aria-label="Zoom out">

@@ -18,12 +18,14 @@
  *   not recorded     -> breath. A cord with no measured length has no pitch.
  *
  * synthString is pure: no Web Audio, the same input always gives the same
- * samples. It is a line-for-line port of the first prototype's synthesis and
- * is meant to stay sample-identical to it; the order of the arithmetic and of
- * the calls to the random generator matters.
+ * samples. It began as a line-for-line port of the first prototype's synthesis.
+ * It no longer sounds the same: a cord now rings for as long as it swings
+ * (ringTime), and a broken or cut cord stops less abruptly. The order of the
+ * arithmetic and of the calls to the random generator still matters: the
+ * frozen cases in stringVoice.test.ts notice any change.
  */
 import { mulberry32 } from '../khipu';
-import { DURATION, UNPITCHED_DURATION, cordFrequency, type CordSound } from './cordSound';
+import { UNPITCHED_DURATION, cordFrequency, durationOf, ringTime, type CordSound } from './cordSound';
 
 export interface StereoSamples {
   L: Float32Array;
@@ -49,11 +51,12 @@ export function knotPartial(f0: number, lengthCm: number, position: number | nul
   return fk;
 }
 
-export function synthString(spec: CordSound, sr: number): StereoSamples {
+/** `clicks`: a broken or cut cord stops with a crack. Without it the cord stops just the same, and silently. */
+export function synthString(spec: CordSound, sr: number, clicks = true): StereoSamples {
   const rnd = mulberry32(spec.seed || 1);
   const term = spec.termination ?? '';
   const f0 = cordFrequency(spec.length);
-  let dur = DURATION[term];
+  let dur = durationOf(spec.termination, spec.lightness);
   if (!f0) dur = UNPITCHED_DURATION;
   const n = Math.floor(dur * sr);
   const mono = new Float32Array(n);
@@ -109,7 +112,7 @@ export function synthString(spec: CordSound, sr: number): StereoSamples {
   }
 
   const bright = 0.25 + 0.7 * lum;
-  const t60 = 0.9 + 1.6 * lum;
+  const t60 = ringTime(lum);
 
   if (!f0) {
     // length not recorded: no string, only breath
@@ -123,7 +126,7 @@ export function synthString(spec: CordSound, sr: number): StereoSamples {
     string(f0, 0.9, 0.16, bright * 0.35);
   } else if (term === 'U') {
     // unfinished: hardly decays at all; it will simply stop (see below)
-    string(f0, 0.6, 9, bright);
+    string(f0, 0.6, t60 * 5, bright);
   } else if (term === 'R') {
     // ravelled: the plies come apart into separate, drifting strings
     string(f0, 0.5, t60, bright);
@@ -206,20 +209,22 @@ export function synthString(spec: CordSound, sr: number): StereoSamples {
       L[k] *= e;
       R[k] *= e;
     }
-    if (crack > 0) {
-      const cl = Math.min(n - c, Math.floor(0.03 * sr));
+    if (crack > 0 && clicks) {
+      const cl = Math.min(n - c, Math.floor(0.08 * sr));
+      const rise = Math.max(1, Math.floor(0.002 * sr));
       let lp = 0;
       for (let k = 0; k < cl; k++) {
-        lp += 0.6 * (rnd() * 2 - 1 - lp);
-        const v = lp * crack * Math.exp(-k / (0.006 * sr));
+        lp += 0.3 * (rnd() * 2 - 1 - lp);
+        // it comes up over 2 ms: a crack that begins at full level is a click
+        const v = lp * crack * 1.6 * Math.min(1, k / rise) * Math.exp(-k / (0.012 * sr));
         L[c + k] += v * gl;
         R[c + k] += v * gr;
       }
     }
   }
   if (f0) {
-    if (term === 'B') stopAt(0.36 + 0.2 * rnd(), 0.003, 0.5); // broken: torn off, with a crack
-    else if (term === 'C') stopAt(0.24, 0.0004, 0.2); // cut: a clean edge
+    if (term === 'B') stopAt(0.36 + 0.2 * rnd(), 0.008, 0.5); // broken: torn off, with a crack
+    else if (term === 'C') stopAt(0.24, 0.004, 0.2); // cut: a clean edge
     else if (term === 'U') stopAt(0.62, 0.02, 0); // unfinished: just ends
   }
 

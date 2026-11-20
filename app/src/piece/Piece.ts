@@ -47,6 +47,10 @@ export interface PieceState {
   finished: { cords: number; knots: number; value: number } | null;
   wear: number;
   volume: number;
+  /** The hum of the main cord is heard. */
+  hum: boolean;
+  /** The snap of a cord parting and the crack of a torn or cut cord are heard. */
+  clicks: boolean;
   voice: VoiceKind;
   /** Operator voice: modulation depth. */
   depth: number;
@@ -127,6 +131,8 @@ export class Piece {
   private wearAmount = 0.45;
   private silent = false;
   private lastSnap = 0;
+  /** For each cord, drawn by lot when the khipu is tied: 1 if the echoes of what it drops climb, 0 if they sink. */
+  private climbs = new Uint8Array(0);
   private lastPluck = new Float64Array(0);
   private fastForwarded = false;
   /** Steps of a ?ff= that are still to run. */
@@ -168,6 +174,8 @@ export class Piece {
       finished: null,
       wear: this.wearAmount,
       volume: 0.8,
+      hum: true,
+      clicks: true,
       voice: this.audio.settings.kind,
       depth: this.audio.settings.depth,
       ring: this.audio.settings.ring,
@@ -279,6 +287,16 @@ export class Piece {
     this.set({ volume });
   }
 
+  setHum(hum: boolean): void {
+    this.audio.setHum(hum);
+    this.set({ hum });
+  }
+
+  setClicks(clicks: boolean): void {
+    this.audio.setClicks(clicks);
+    this.set({ clicks });
+  }
+
   setVoice(voice: VoiceKind): void {
     this.audio.settings.kind = voice;
     this.ledgerDirty = true;
@@ -349,6 +367,7 @@ export class Piece {
     if (!fresh) this.generation++;
     this.hanging = hanging;
     this.lastPluck = new Float64Array(khipu.cords.length).fill(-1e9);
+    this.climbs = Uint8Array.from(khipu.cords, () => (Math.random() < 0.5 ? 1 : 0));
 
     const width = hanging.layout.width;
     const pass = clamp(khipu.pendants.length * 0.22, 25, 150); // seconds for the hand to cross
@@ -364,6 +383,7 @@ export class Piece {
     // String sounds are kept by cord and state; the ones kept so far are of cords that no longer hang.
     this.audio.forget();
     this.audio.setDrone(khipu.cords.length ? khipu.primary.length || 0 : null);
+    this.audio.setErosion(0);
 
     this.focus = null;
     this.focusVersion = -1;
@@ -401,7 +421,7 @@ export class Piece {
     if (this.silent || this.time - this.lastSnap < 0.07 || !this.hanging) return;
     this.lastSnap = this.time;
     const { layout } = this.hanging;
-    this.audio.snap((layout.cords[cord.index].x / layout.width) * 1.4 - 0.7);
+    this.audio.snap((layout.cords[cord.index].x / layout.width) * 1.4 - 0.7, this.climbs[cord.index] === 1);
   }
 
   /**
@@ -606,6 +626,7 @@ export class Piece {
     if (this.tallyDirty || this.params.debug) {
       const debug = this.debugLine();
       if (this.tallyDirty || debug !== this.state.tally?.debug) patch.tally = tallyOf(hanging, this.generation, debug);
+      if (this.tallyDirty) this.audio.setErosion(erosionOf(hanging));
       this.tallyDirty = false;
     }
     if (patch.ledger || patch.tally || patch.audible !== undefined) this.set(patch);
@@ -622,8 +643,8 @@ export class Piece {
   attach(canvas: HTMLCanvasElement): () => void {
     const stage = new Stage(canvas);
     this.stage = stage;
-    stage.onGrainLanded = (pan, lightness) => {
-      if (!this.silent) this.audio.tick(pan, lightness);
+    stage.onGrainLanded = (pan, lightness, cordIndex) => {
+      if (!this.silent) this.audio.tick(pan, lightness, this.climbs[cordIndex] === 1);
     };
 
     const size = () => stage.resize(window.innerWidth, window.innerHeight, Math.min(2, window.devicePixelRatio || 1));
@@ -759,4 +780,13 @@ export class Piece {
       if (this.stage === stage) this.stage = null;
     };
   }
+}
+
+/** How much of a khipu has gone, 0 (whole) to 1 (bare): the share of its cords and of its knots no longer hanging. */
+function erosionOf(hanging: HangingKhipu): number {
+  const { archive, now } = hanging;
+  const cords = archive.cords > 0 ? 1 - now.cords / archive.cords : 0;
+  // a khipu with no knots wears only by its cords
+  const knots = archive.knots > 0 ? 1 - now.knots / archive.knots : cords;
+  return clamp(0.5 * (cords + knots), 0, 1);
 }

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { mulberry32 } from '../src/khipu';
-import { Bed, Rope, RopeSim } from '../src/stage/RopeSim';
+import { ringTime } from '../src/audio/cordSound';
+import { Bed, Rope, RopeSim, tiedDrag } from '../src/stage/RopeSim';
 
 const STEP = 1 / 60;
 
@@ -71,6 +72,43 @@ describe('a hanging rope', () => {
     const end = 3 * (rope.n - 1);
     expect(Math.abs(rope.p[end] - 10)).toBeLessThan(0.3);
     expect(rope.p[end + 1]).toBeCloseTo(-40, 0);
+  });
+});
+
+describe('a cord that is pushed', () => {
+  /** Seconds until the swing of the rope's end stays under 3% of its widest. */
+  function swingTime(lightness: number, length: number, push: number): number {
+    const s = sim();
+    const rope = s.add(hanging(10, length, Math.min(26, Math.ceil(length / 2))));
+    rope.drag = tiedDrag(ringTime(lightness));
+    s.kick(rope, length / 2, push, 0, push * 0.2, Math.max(2, length * 0.3));
+    const end = 3 * (rope.n - 1);
+    let widest = 0;
+    let last = 0;
+    // until it sleeps: where it then hangs is where it stays
+    for (let t = 0; t < 30 && rope.awake; t += STEP) {
+      s.step(STEP);
+      const swing = Math.hypot(rope.p[end] - 10, rope.p[end + 2]);
+      widest = Math.max(widest, swing);
+      if (swing > 0.03 * widest) last = t;
+    }
+    return last;
+  }
+
+  it('swings for about as long as it rings, whatever its length and however hard the push', () => {
+    for (const lightness of [0, 0.5, 1]) {
+      for (const length of [10, 25, 50]) {
+        for (const push of [5, 15]) {
+          const ratio = swingTime(lightness, length, push) / ringTime(lightness);
+          expect(ratio, `lightness ${lightness}, ${length} cm, pushed at ${push} cm/s`).toBeGreaterThan(0.7);
+          expect(ratio, `lightness ${lightness}, ${length} cm, pushed at ${push} cm/s`).toBeLessThan(1.3);
+        }
+      }
+    }
+  });
+
+  it('swings longer when it is pale', () => {
+    expect(swingTime(1, 25, 15)).toBeGreaterThan(swingTime(0, 25, 15));
   });
 });
 

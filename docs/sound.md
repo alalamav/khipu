@@ -88,7 +88,7 @@ Counts over the whole archive: 619 khipus, 54,403 cords, 59,920 clusters of knot
 | Field | Recorded | Not recorded | What the blank does to the sound |
 |---|---|---|---|
 | Cord length | 52,125 | 2,278 (the database writes 0) | No pitch in the string and operator voices: breath only |
-| Colour | 52,839 | 1,564 | The ring time of a mid-brown cord is assumed (lightness 0.4, 1.54 s). No breath |
+| Colour | 52,839 | 1,564 | The ring time of a mid-brown cord is assumed (lightness 0.4, 5.7 s). No breath |
 | Termination | 52,694 | 1,709 | The cord is "barely there": a third of the level, half the ring, under breath |
 | Knot position (per cluster) | 59,831 | 89 | String voice: no partial, only a tick. Every voice: the knot sounds at an arbitrary moment |
 | Knot direction (per cluster) | 52,491 | 7,429 | The knot sits in the middle. In the string voice it is partly noise |
@@ -197,36 +197,40 @@ A 30 cm cord is 220 Hz, a 60 cm cord 110 Hz, a 20 cm cord 330 Hz. Pitch inversel
 
 ```
 lightness = (0.2126 R + 0.7152 G + 0.0722 B) / 255        from the colour chart's RGB
-T60       = 0.9 + 1.6 × lightness   seconds                 time to fall by 60 dB
+T60       = 4.5 + 3 × lightness     seconds                 time to fall by 60 dB
 ```
 
-This is an analogy and nothing more: pale, undyed cord is treated as the more resonant material. Three colours carry most of the archive, so three ring times do too:
+This is an analogy and nothing more: pale, undyed cord is treated as the more resonant material.
+
+**A cord rings for as long as it swings.** A touch pushes the cord on stage as well as sounding it, and the ring time is also the time in which its swing dies away to about a thirtieth: the stage sets each rope's drag from the same number (`tiedDrag` in [`RopeSim.ts`](../app/src/stage/RopeSim.ts)). So pale cords swing longer too, and the sound is at −60 dB about when the cord is last seen to move. The match is rough: within about 30% across cord lengths and pushes (`ropeSim.test.ts`). The ring times were 0.9 to 2.5 s before this, about a third of the swing.
+
+Three colours carry most of the archive, so three ring times do too:
 
 | Colour | Cords | Lightness | Rings |
 |---|---|---|---|
-| `W` white | 13,852 (26%) | 0.96 | 2.43 s |
-| `AB` light brown | 9,363 (18%) | 0.44 | 1.61 s |
-| `MB` moderate brown | 7,756 (15%) | 0.26 | 1.31 s |
-| `KB` dark brown | 3,562 (7%) | 0.11 | 1.08 s |
-| the darkest colour used | | 0.06 | 1.00 s |
-| not recorded | 1,564 | taken as 0.4 | 1.54 s |
+| `W` white | 13,852 (26%) | 0.96 | 7.38 s |
+| `AB` light brown | 9,363 (18%) | 0.44 | 5.82 s |
+| `MB` moderate brown | 7,756 (15%) | 0.26 | 5.28 s |
+| `KB` dark brown | 3,562 (7%) | 0.11 | 4.83 s |
+| the darkest colour used | | 0.06 | 4.68 s |
+| not recorded | 1,564 | taken as 0.4 | 5.70 s |
 
 All 64 colours of the chart occur. Only the first colour of a cord is heard: 12,764 cords have a second (mottled or barber-pole), which is drawn and not sounded.
 
 ### The termination: how it ends
 
-Each termination code has a duration and a way of ending. The definitions are the database's own (`termination_dc`).
+Each termination code has a duration and a way of ending. The definitions are the database's own (`termination_dc`). Most durations are a share of the cord's ring time ("ring" below: 4.5 to 7.5 s), so that the sound lasts while the cord swings. Three endings silence a cord that is still moving, and are meant to: broken and unfinished cords stop part of the way through, and cut and wrapped cords are short however long they swing.
 
 | Code | The archive's words | Cords | Lasts | In the sound |
 |---|---|---|---|---|
-| `K` knotted | "cord ends with a knot near the bottom" | 37,692 | 2.4 s | Rings out |
-| `B` broken | "cord has been broken" | 9,392 | 1.5 s | Cut off between 0.54 and 0.84 s over 3 ms, with a crack of noise |
-| `U` unfinished | "not knotted; not broken; not cut... just ends" | 3,000 | 1.7 s | Hardly decays at all (9 s ring), then stops at 1.05 s over 20 ms. No crack |
-| `R` ravelled | "plies are coming apart" | 2,190 | 2.6 s | Four strands instead of one, at 1, 1.011, 0.985 and 1.027 times the pitch, each dying a little sooner than the last: they drift apart |
-| not recorded | | 1,709 | 1.4 s | A third of the level, half the ring, under 1.2 s of breath |
+| `K` knotted | "cord ends with a knot near the bottom" | 37,692 | 1 × ring | Rings out |
+| `B` broken | "cord has been broken" | 9,392 | 0.6 × ring | Cut off between 0.22 and 0.34 of the ring (1.0 to 2.5 s) over 8 ms, with a crack of noise |
+| `U` unfinished | "not knotted; not broken; not cut... just ends" | 3,000 | 0.7 × ring | Hardly decays at all (five times the ring), then stops at 0.43 of the ring (2.0 to 3.3 s) over 20 ms. No crack |
+| `R` ravelled | "plies are coming apart" | 2,190 | 1 × ring | Four strands instead of one, at 1, 1.011, 0.985 and 1.027 times the pitch, each dying a little sooner than the last: they drift apart |
+| not recorded | | 1,709 | 0.6 × ring | A third of the level, half the ring, under 1.2 s of breath |
 | `TT` canutito | "end of cord is wrapped with colored thread" | 359 | 0.75 s | Damped: rings for 0.16 s |
-| `D` doubled | "end of cord is doubled over" | 54 | 2.6 s | A second strand an octave below |
-| `C` cut | "cord has been cut (sharper end than broken)" | 7 | 0.9 s | Cut off at 0.22 s over 0.4 ms, with a smaller crack |
+| `D` doubled | "end of cord is doubled over" | 54 | 1.1 × ring | A second strand an octave below |
+| `C` cut | "cord has been cut (sharper end than broken)" | 7 | 0.9 s | Cut off at 0.22 s over 4 ms, with a smaller crack |
 
 In the string voice a "strand" is a string. In the operator voice it is a sine oscillator. In the resonator voice every resonance is split into the same strands. A sound that is cut off takes with it whatever would have come later: on a broken cord, the last strikes of a long roll near the bottom are not heard.
 
@@ -264,7 +268,7 @@ What this does to the sound, in every voice:
 - **Left to right:** `pan = 1.4 × (position / width) − 0.7`, so cords lie between −0.7 and 0.7.
 - **Reading:** the hand crosses the main cord in 0.22 s per pendant, but never in less than 25 s or more than 150 s, touching each pendant as it passes, then rests 1.4 s and starts again.
 - **Subsidiaries:** touching a cord touches each of its subsidiaries after it, 90 ms apart and at 0.6 of the level, and theirs in turn. On each cord only the first eight are sounded; all of them are worn. (83 cords have more than eight.)
-- **Limits:** one stroke of the hand sounds at most 13 cords, and a cord not again within 0.12 s. At most 30 string, 16 operator or 20 resonator sounds are heard at once; a touch beyond that still wears the cord but is silent.
+- **Limits:** one stroke of the hand sounds at most 13 cords, and a cord not again within 0.12 s. At most 60 string, 32 operator or 28 resonator sounds are heard at once (twice what they were, or nearly, since each sound now lasts about three times as long); a touch beyond that still wears the cord but is silent.
 
 ### The bus
 
@@ -551,10 +555,16 @@ Each knot cluster that falls takes its resonance with it: the chord thins, one n
 
 | Sound | When | From the row | How it is made |
 |---|---|---|---|
-| **Hum** | As long as a khipu with cords is on stage | `primary_cord.PCORD_LENGTH` | `6600 / cm` again, but moved by octaves into 42 to 84 Hz. A triangle wave with a sine a fifth above it, low-passed at 320 Hz, swelling very slowly. 55 Hz if the main cord was never measured |
-| **Grain** | Each fragment of a fallen knot landing on the bed | the cord's lightness | 30 ms of narrow-band noise between 1800 and 6800 Hz, brighter for pale cords, placed where it lands |
-| **Snap** | A cord parting or coming away | where the cord hangs | 90 ms of band-passed noise around 900 to 1600 Hz |
-| **Crack** | Inside the sound of a broken or cut cord | `TERMINATION` | 40 ms of low-passed noise with a 6 ms decay |
+| **Hum** | As long as a khipu with cords is on stage, unless the **hum** control is off | `primary_cord.PCORD_LENGTH` | `6600 / cm` again, but moved by octaves into 42 to 84 Hz. A triangle wave with a sine a fifth above it, low-passed at 320 Hz, swelling very slowly. 55 Hz if the main cord was never measured |
+| **Grain** | Each fragment of a fallen knot landing on the bed | the cord's lightness; the main cord's length | A knock: one resonance struck by a pulse, at 3 to 12 times the hum (lower for dark cords), dying in about 0.2 s. Under it, 50 ms of soft noise between 700 and 2200 Hz. Placed where it lands |
+| **Snap** | A cord parting or coming away, unless the **clicks** control is off | where the cord hangs | 140 ms of band-passed noise around 500 to 900 Hz that comes up over 5 ms, and a knock an octave above the hum |
+| **Crack** | Inside the sound of a broken or cut cord, unless the **clicks** control is off | `TERMINATION` | 80 ms of noise low-passed at 2600 Hz, up over 2 ms and down with a 12 ms decay. With clicks off the cord stops just the same, silently |
+
+**The floor.** Grains and snaps are heard from further off than cords: less of them directly, more from the room (30 ms late and low-passed at 2400 Hz), and repeated by an echo.
+
+- **Echo time:** sixteen periods of the hum, so 0.19 to 0.38 s, set by the main cord's length.
+- **The band:** each time round, an echo passes a band-pass filter (Q 0.9) that is moving from 800 Hz, either up to 3200 Hz or down to 200 Hz, over seven repeats. There are two echoes, one for each direction; which one a cord's grains and snaps go to is drawn by lot when the khipu is tied. This is ours, not the archive's.
+- **Erosion:** the mean of the share of cords and the share of knots no longer hanging. From a whole khipu to a bare one the direct level falls from 0.55 to 0.2, the echo's feedback rises from 0.3 to 0.68 and its level from 0.6 to 1.2. The echoes are sent to the room as well.
 
 The hum in the archive: 578 khipus hum at the pitch of a measured main cord, 34 at the default, and the 7 khipus with no cords are silent. Main cords run from 1.4 to 513.5 cm (median 47 cm), so all but 96 are moved by octaves; the hums lie between 42.0 and 83.5 Hz with a median of 56.9 Hz.
 
@@ -567,7 +577,7 @@ The khipus are undeciphered and none of this decodes them. Every mapping is a ch
 | From the archive | Our choice |
 |---|---|
 | Cord length in cm | That length is pitch at all; `6600 / cm`; the range 65 to 1568 Hz and the folding into it |
-| Colour code and its RGB | That pale means resonant; `0.9 + 1.6 × lightness` seconds; a mid-brown for cords with no colour |
+| Colour code and its RGB | That pale means resonant; `4.5 + 3 × lightness` seconds, and that a cord swings that long too; a mid-brown for cords with no colour |
 | Termination code and its definition | Every ending in the table of section 3 |
 | Knot position | That a knot is a partial at `L / p`; reading the cord from the top in half a second |
 | Knot type and count | Ping, roll, beating; 75 ms and 34 ms |
@@ -615,6 +625,7 @@ Two faults were found by measuring and are fixed:
 
 ## 10. Known limits and open questions
 
+- **The measurements of section 9 are older than the sound.** They were taken before the floor's knocks and echoes, the softer cracks, and the ring times that match the swing (and the larger numbers of sounds at once that go with them). `selftest.html` has not been run since.
 - **Nobody has listened to it critically.** The levels of knots against cords, the depth of modulation, the base pitches and the room are set by reasoning and measurement, and are the first things to change by ear. It has been run in Chrome only.
 - **The string voice is computed on the main thread.** A cord takes 1.7 ms at the median and up to about 20 ms, which can cost a frame of animation now and then. The other two voices cost almost nothing to set up.
 - **The string voice's pitch is quantised** by its delay line (the note in section 4).
@@ -633,6 +644,7 @@ Each mapping is in one place, and the two patch builders are pure functions that
 | To change | Edit |
 |---|---|
 | The pitch rule, the durations, the ring time | [`cordSound.ts`](../app/src/audio/cordSound.ts) |
+| How the ring time becomes a rope's swing | `tiedDrag` in [`RopeSim.ts`](../app/src/stage/RopeSim.ts) |
 | How each termination ends | [`endings.ts`](../app/src/audio/endings.ts) (operator, resonator) and the same numbers in [`stringVoice.ts`](../app/src/audio/stringVoice.ts) |
 | The partial a knot sounds on a string | `knotPartial` in [`stringVoice.ts`](../app/src/audio/stringVoice.ts) |
 | Which cords modulate which, proportions, depths, limits | [`operatorPatch.ts`](../app/src/audio/operatorPatch.ts) |
@@ -640,7 +652,7 @@ Each mapping is in one place, and the two patch builders are pure functions that
 | How the modulation settles; the waveform of the operators | [`OperatorVoice.ts`](../app/src/audio/OperatorVoice.ts) |
 | The number-to-pitch scale, strikes, panning of knots, the sharing of the filters | [`resonatorPatch.ts`](../app/src/audio/resonatorPatch.ts) |
 | The filters and the strike | [`ResonatorVoice.ts`](../app/src/audio/ResonatorVoice.ts) |
-| Room, compressor, limiter, breath, crack | [`bus.ts`](../app/src/audio/bus.ts) |
+| Room, compressor, limiter, breath, crack; the floor and its echoes | [`bus.ts`](../app/src/audio/bus.ts) |
 | Hum, grains, snaps; how many sounds at once | [`AudioEngine.ts`](../app/src/audio/AudioEngine.ts) |
 | What the ledger prints for each voice | [`views.ts`](../app/src/piece/views.ts) |
 | The wear rule | [`HangingKhipu.ts`](../app/src/khipu/HangingKhipu.ts) |

@@ -20,13 +20,13 @@ const texts = (voice: NonNullable<CordRowView['voice']>) => voice.lines.map((lin
 
 describe('the string voice in the ledger', () => {
   it('gives the pitch of the length and how long the colour rings', () => {
-    // 30 cm is 220 Hz; a white cord rings 0.9 + 1.6 s
-    expect(readout([cord()], 'string').title).toBe('string · 220 Hz · rings 2.5 s');
+    // 30 cm is 220 Hz; a white cord rings 4.5 + 3 s
+    expect(readout([cord()], 'string').title).toBe('string · 220 Hz · rings 7.5 s');
   });
 
   it('says how far a very short or very long cord was moved to come into range', () => {
-    expect(readout([cord({ length: 2 })], 'string').title).toBe('string · 825 Hz (3300 Hz, 2 octaves down) · rings 2.5 s');
-    expect(readout([cord({ length: 120 })], 'string').title).toBe('string · 110 Hz (55 Hz, 1 octave up) · rings 2.5 s');
+    expect(readout([cord({ length: 2 })], 'string').title).toBe('string · 825 Hz (3300 Hz, 2 octaves down) · rings 7.5 s');
+    expect(readout([cord({ length: 120 })], 'string').title).toBe('string · 110 Hz (55 Hz, 1 octave up) · rings 7.5 s');
   });
 
   it('lists the partial each knot sounds, and how it is struck', () => {

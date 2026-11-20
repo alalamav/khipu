@@ -28,7 +28,8 @@ import {
 import type { Cord, CordLayout, HangingKhipu, Knot, Rgb, WearListener } from '../khipu';
 import { CordLines, LINE_NO_MINIMUM, LINE_RIM, LineStyle, type ScreenUniforms } from './CordLines';
 import { KnotShape, KnotSprites } from './KnotSprites';
-import { Bed, Rope, RopeSim } from './RopeSim';
+import { Bed, Rope, RopeSim, tiedDrag } from './RopeSim';
+import { ringTime } from '../audio/cordSound';
 
 // ───────────────────────── how things look ─────────────────────────
 
@@ -111,9 +112,12 @@ function spline(a: number, b: number, c: number, d: number, t: number): number {
   return 0.5 * (2 * b + (c - a) * t + (2 * a - 5 * b + 4 * c - d) * t * t + (3 * b - a - 3 * c + d) * t * t * t);
 }
 
+/** Numbers kept for each grain in the air. */
+const GRAIN = 11;
+
 export class Stage implements WearListener {
-  /** Called when a fallen grain reaches the bed: where (-1 left to 1 right) and how light the cord was. */
-  onGrainLanded: ((pan: number, lightness: number) => void) | null = null;
+  /** Called when a fallen grain reaches the bed: where (-1 left to 1 right), how light the cord was, and which cord. */
+  onGrainLanded: ((pan: number, lightness: number, cordIndex: number) => void) | null = null;
 
   private readonly renderer: WebGLRenderer;
   private readonly scene = new Scene();
@@ -145,7 +149,7 @@ export class Stage implements WearListener {
   private debris: Rope[] = [];
   /** Fallen grains at rest: x, y, z, r, g, b per grain. */
   private landed: number[] = [];
-  /** Grains in the air: x, y, z, vx, vy, vz, r, g, b, lightness per grain. */
+  /** Grains in the air: x, y, z, vx, vy, vz, r, g, b, lightness, index of the cord: GRAIN numbers per grain. */
   private flying: number[] = [];
 
   // the scale of the khipu on stage
@@ -321,6 +325,8 @@ export class Stage implements WearListener {
 
     const rope = new Rope(points);
     rope.tag = cord.index;
+    // A cord swings for as long as it rings: pale cords longer.
+    rope.drag = tiedDrag(ringTime(cord.lightness));
     // Top cords are drawn upward from the main cord, as khipu schematics draw them.
     rope.gravity = at.dir === 1 ? 1 : -1;
     if (parent) {
@@ -383,6 +389,7 @@ export class Stage implements WearListener {
         (Math.random() - 0.5) * h * 0.08,
         rgb[0], rgb[1], rgb[2],
         cord.lightness,
+        cord.index,
       );
     }
     this.cordsDirty = true;
@@ -453,7 +460,7 @@ export class Stage implements WearListener {
     const bed = this.sim.bed;
     const slow = 1 - 1.2 * dt;
     let w = 0;
-    for (let i = 0; i < f.length; i += 10) {
+    for (let i = 0; i < f.length; i += GRAIN) {
       f[i + 4] -= g * dt;
       f[i + 3] *= slow;
       f[i + 5] *= slow;
@@ -466,10 +473,10 @@ export class Stage implements WearListener {
         const c = mix([f[i + 6], f[i + 7], f[i + 8]], 0.15);
         this.landed.push(f[i], ground, f[i + 2], c[0], c[1], c[2]);
         this.fallenDirty = true;
-        this.onGrainLanded?.((f[i] / this.width) * 1.4 - 0.7, f[i + 9]);
+        this.onGrainLanded?.((f[i] / this.width) * 1.4 - 0.7, f[i + 9], f[i + 10]);
       } else {
-        if (w !== i) for (let k = 0; k < 10; k++) f[w + k] = f[i + k];
-        w += 10;
+        if (w !== i) for (let k = 0; k < GRAIN; k++) f[w + k] = f[i + k];
+        w += GRAIN;
       }
     }
     f.length = w;
@@ -671,7 +678,7 @@ export class Stage implements WearListener {
     const f = this.flying;
     if (!f.length && !grains.count) return;
     grains.begin();
-    for (let i = 0; i < f.length; i += 10) {
+    for (let i = 0; i < f.length; i += GRAIN) {
       const c = mix([f[i + 6], f[i + 7], f[i + 8]], 0.35);
       grains.add(f[i], f[i + 1], f[i + 2], 0, -1, 0, c[0], c[1], c[2], 1, KnotShape.dot, 1, 0, 1);
     }

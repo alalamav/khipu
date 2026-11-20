@@ -7,7 +7,7 @@
  * whether the sound is cut off. The numbers match the string voice.
  */
 import type { TerminationCode } from '../khipu';
-import { DURATION, UNPITCHED_DURATION, ringTime, type CordSound } from './cordSound';
+import { UNPITCHED_DURATION, durationOf, ringTime, type CordSound } from './cordSound';
 
 /** One sounding component of a cord. A plain cord has one; a ravelled one has four. */
 export interface Strand {
@@ -61,7 +61,7 @@ export function endingOf(sound: CordSound, f0: number, random: () => number): En
     };
   }
 
-  const duration = DURATION[term ?? ''];
+  const duration = durationOf(term, sound.lightness);
   let strands: Strand[] = [{ ratio: 1, level: 0.8, ring: t60 }];
   let stop: Ending['stop'] = null;
 
@@ -74,7 +74,7 @@ export function endingOf(sound: CordSound, f0: number, random: () => number): En
       strands = [{ ratio: 1, level: 0.9, ring: 0.16 }];
       break;
     case 'U':
-      strands = [{ ratio: 1, level: 0.6, ring: 9 }];
+      strands = [{ ratio: 1, level: 0.6, ring: t60 * 5 }];
       stop = { at: 0.62 * duration, fade: 0.02, crack: 0 };
       break;
     case 'R':
@@ -92,10 +92,10 @@ export function endingOf(sound: CordSound, f0: number, random: () => number): En
       ];
       break;
     case 'B':
-      stop = { at: (0.36 + 0.2 * random()) * duration, fade: 0.003, crack: 0.5 };
+      stop = { at: (0.36 + 0.2 * random()) * duration, fade: 0.008, crack: 0.5 };
       break;
     case 'C':
-      stop = { at: 0.24 * duration, fade: 0.0004, crack: 0.2 };
+      stop = { at: 0.24 * duration, fade: 0.004, crack: 0.2 };
       break;
     case 'K':
       break;

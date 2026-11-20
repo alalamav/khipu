@@ -4,6 +4,21 @@
  *   voices -> input -+-> compressor -> limiter -> trim -> master -> speakers
  *                    +-> room -> wet -+
  *
+ * What happens on the floor (a grain landing, a cord parting) comes in by another
+ * door, and is heard from further off: less of it direct, more of it from the room,
+ * a little late and duller, and repeated by an echo.
+ *
+ *   door -+-> floor -+-> dry ------------------------> compressor
+ *         |          +-> late -> dark -> send --------> room
+ *         +-> echo -> band -+-> out -+----------------> compressor
+ *               ^           |        +-> send --------> room
+ *               +- feedback +
+ *
+ * There are two doors, each with an echo of its own. Each time round, an echo passes a
+ * band-pass filter that is on the move: upward in one echo, downward in the other. So the
+ * repeats of a sound climb, or sink. Which door a sound takes is drawn by lot for each cord.
+ * The echo's time is set by the main cord, and it grows as the khipu wears away.
+ *
  * A Bus builds its nodes in whatever Tone context is current, so the same
  * class serves the live context and offline rendering (see selftest.ts).
  */
@@ -19,6 +34,44 @@ const LIMIT_DB = -3;
 /** …letting 1 dB out for every this many dB that come in. */
 const LIMIT_RATIO = 20;
 
+/** The floor's sounds reach the room this long after they are made. */
+const FLOOR_LATE = 0.03;
+/**
+ * How the floor is heard on a whole khipu (0) and on a bare one (1). As the khipu wears away
+ * there is less of the thing itself and more of what comes back from it.
+ */
+const FLOOR = {
+  dry: [0.55, 0.2],
+  /** Into the room, which `wet` then scales like everything else. */
+  send: [2, 3.5],
+  feedback: [0.3, 0.68],
+  echo: [0.6, 1.2],
+} as const;
+/** How much of the echoes goes into the room, which `wet` then scales like everything else. */
+const ECHO_ROOM = 2.5;
+/** Where an echo's band-pass starts, in Hz, and how far it travels: up to 4 times that, or down to a quarter. */
+const BAND_FROM = 800;
+const BAND_SPAN = 4;
+const BAND_Q = 0.9;
+/** The band crosses its span in this many repeats of the echo. */
+const BAND_REPEATS = 7;
+
+/** One echo: what comes in at its door is repeated, through a band-pass that moves one way. */
+interface EchoLine {
+  door: Tone.Gain;
+  delay: Tone.Delay;
+  band: Tone.BiquadFilter;
+  feedback: Tone.Gain;
+  /** Where the band ends up, in Hz. */
+  bandTo: number;
+  /** When the band's present journey is over, in audio time. */
+  arrives: number;
+}
+
+function between([whole, bare]: readonly [number, number], erosion: number): number {
+  return whole + (bare - whole) * Math.max(0, Math.min(1, erosion || 0));
+}
+
 function clampPan(pan: number): number {
   return Math.max(-1, Math.min(1, pan || 0));
 }
@@ -28,6 +81,8 @@ export class Bus {
   readonly input: Tone.Gain;
   /** A very short smooth pulse: what strikes the resonators. Its samples add up to 1. */
   readonly pulse: Tone.ToneAudioBuffer;
+  /** A cord that is torn or cut stops with a crack. Without, it stops just the same, and silently. */
+  clicks = true;
 
   private readonly master: Tone.Gain;
   private readonly compressor: Tone.Compressor;
@@ -35,6 +90,17 @@ export class Bus {
   private readonly trim: Tone.Gain;
   private readonly room: Tone.Convolver;
   private readonly wet: Tone.Gain;
+  private readonly floorDry: Tone.Gain;
+  private readonly floorLate: Tone.Delay;
+  private readonly floorDark: Tone.BiquadFilter;
+  private readonly floorSend: Tone.Gain;
+  private readonly floor: Tone.Gain;
+  /** The echo whose repeats climb, and the one whose repeats sink. */
+  private readonly rising: EchoLine;
+  private readonly sinking: EchoLine;
+  private readonly echoOut: Tone.Gain;
+  private readonly echoSend: Tone.Gain;
+  private echoTime = 0.3;
   private readonly noise: Tone.ToneAudioBuffer;
   private readonly pulseSamples: Float32Array;
 
@@ -61,6 +127,21 @@ export class Bus {
     this.room.buffer = Tone.ToneAudioBuffer.fromArray(roomImpulse(3.2, sr));
     this.wet = new Tone.Gain(room);
     this.input.chain(this.room, this.wet, this.compressor);
+
+    this.floor = new Tone.Gain(1);
+    this.floorDry = new Tone.Gain(between(FLOOR.dry, 0));
+    this.floor.chain(this.floorDry, this.compressor);
+    this.floorLate = new Tone.Delay(FLOOR_LATE, 0.1);
+    this.floorDark = new Tone.BiquadFilter({ type: 'lowpass', frequency: Math.min(2400, this.ceiling), Q: 0 });
+    this.floorSend = new Tone.Gain(between(FLOOR.send, 0));
+    this.floor.chain(this.floorLate, this.floorDark, this.floorSend, this.room);
+    // The echoes. They are heard directly, and from the room.
+    this.echoOut = new Tone.Gain(between(FLOOR.echo, 0));
+    this.echoOut.connect(this.compressor);
+    this.echoSend = new Tone.Gain(ECHO_ROOM);
+    this.echoOut.chain(this.echoSend, this.room);
+    this.rising = this.echoLine(BAND_FROM * BAND_SPAN);
+    this.sinking = this.echoLine(BAND_FROM / BAND_SPAN);
 
     this.noise = Tone.ToneAudioBuffer.fromArray(whiteNoise(1.5, sr));
     this.pulseSamples = hannPulse(Math.max(3, Math.round(sr * 0.00025)));
@@ -92,6 +173,54 @@ export class Bus {
     this.master.gain.setTargetAtTime(volume, this.now, 0.05);
   }
 
+  private echoLine(bandTo: number): EchoLine {
+    const door = new Tone.Gain(1);
+    door.connect(this.floor);
+    const delay = new Tone.Delay(this.echoTime, 1);
+    const band = new Tone.BiquadFilter({ type: 'bandpass', frequency: Math.min(BAND_FROM, this.ceiling), Q: BAND_Q });
+    const feedback = new Tone.Gain(between(FLOOR.feedback, 0));
+    // Each time round the echo passes the band again, and the band has moved on.
+    door.chain(delay, band, feedback, delay);
+    band.connect(this.echoOut);
+    return { door, delay, band, feedback, bandTo: Math.min(bandTo, this.ceiling), arrives: 0 };
+  }
+
+  /**
+   * Where a sound made on the floor connects: it is heard from further off, and echoed. Through one
+   * door its repeats climb, through the other they sink.
+   */
+  floorDoor(rising: boolean): Tone.Gain {
+    const line = rising ? this.rising : this.sinking;
+    const t = this.now;
+    // The band sets out again once it has arrived. While it is on its way, what comes in travels with it.
+    if (t >= line.arrives) {
+      line.arrives = t + this.echoTime * BAND_REPEATS;
+      const frequency = line.band.frequency;
+      frequency.cancelScheduledValues(t);
+      frequency.setValueAtTime(Math.min(BAND_FROM, this.ceiling), t);
+      frequency.exponentialRampToValueAtTime(line.bandTo, line.arrives);
+    }
+    return line.door;
+  }
+
+  /** How long the floor's echo takes to come back, in seconds. */
+  setEchoTime(seconds: number): void {
+    this.echoTime = Math.max(0.05, Math.min(1, seconds));
+    for (const line of [this.rising, this.sinking]) line.delay.delayTime.setTargetAtTime(this.echoTime, this.now, 0.2);
+  }
+
+  /**
+   * How much of the khipu has gone: 0 whole, 1 bare. The more has gone, the less of the floor
+   * is heard directly and the more as room and echo.
+   */
+  setErosion(erosion: number): void {
+    const t = this.now;
+    this.floorDry.gain.setTargetAtTime(between(FLOOR.dry, erosion), t, 0.3);
+    this.floorSend.gain.setTargetAtTime(between(FLOOR.send, erosion), t, 0.3);
+    for (const line of [this.rising, this.sinking]) line.feedback.gain.setTargetAtTime(between(FLOOR.feedback, erosion), t, 0.3);
+    this.echoOut.gain.setTargetAtTime(between(FLOOR.echo, erosion), t, 0.3);
+  }
+
   /** Run `fn` once `seconds` of audio time have passed. */
   after(seconds: number, fn: () => void): void {
     this.input.context.setTimeout(fn, Math.max(0, seconds));
@@ -109,15 +238,31 @@ export class Bus {
     return Math.max(0.05, Math.hypot(re, im));
   }
 
-  /** A short burst of band-passed noise that dies away: a grain landing, a cord parting, a tap. */
-  burst(time: number, frequency: number, q: number, level: number, length: number, pan: number, offset = 0): void {
+  /**
+   * A short burst of band-passed noise that dies away: a grain landing, a cord parting, a tap.
+   * It comes up over `attack` seconds: a sound that begins at full level begins with a click.
+   * `to` is where it is heard: `input`, or a door to the floor.
+   */
+  burst(
+    time: number,
+    frequency: number,
+    q: number,
+    level: number,
+    length: number,
+    pan: number,
+    offset = 0,
+    attack = 0.002,
+    to: Tone.Gain = this.input,
+  ): void {
     const source = new Tone.ToneBufferSource({ url: this.noise });
     const filter = new Tone.BiquadFilter({ type: 'bandpass', frequency: Math.min(frequency, this.ceiling), Q: q });
     const gain = new Tone.Gain(0);
-    gain.gain.setValueAtTime(level, time);
+    const rise = Math.min(attack, length * 0.5);
+    gain.gain.setValueAtTime(0.0001, time);
+    gain.gain.linearRampToValueAtTime(level, time + rise);
     gain.gain.exponentialRampToValueAtTime(0.0001, time + length);
     const panner = new Tone.Panner(clampPan(pan));
-    source.chain(filter, gain, panner, this.input);
+    source.chain(filter, gain, panner, to);
     source.onended = () => {
       source.dispose();
       filter.dispose();
@@ -127,13 +272,38 @@ export class Bus {
     source.start(time, offset, length + 0.02);
   }
 
+  /**
+   * The floor struck: a short, dull, pitched knock. The strike pulse rings one resonance,
+   * which dies away with a time constant of `ring` seconds. `level` is its peak. `to` is a door to the floor.
+   */
+  tok(time: number, frequency: number, ring: number, level: number, pan: number, to: Tone.Gain): void {
+    const f = Math.min(frequency, this.ceiling);
+    const source = new Tone.ToneBufferSource({ url: this.pulse });
+    // A band-pass struck by a unit pulse rings at 2*pi*f / (Q * sr), for Q / (pi * f) seconds.
+    const q = Math.max(0.5, Math.PI * f * ring);
+    const filter = new Tone.BiquadFilter({ type: 'bandpass', frequency: f, Q: q });
+    const gain = new Tone.Gain((level * q * this.sampleRate) / (2 * Math.PI * f * this.pulseResponse(f)));
+    const panner = new Tone.Panner(clampPan(pan));
+    source.chain(filter, gain, panner, to);
+    source.start(time);
+    // The pulse is over at once, and the resonance is not: let go once it has died away.
+    this.after(time - this.now + ring * 9 + 0.05, () => {
+      source.dispose();
+      filter.dispose();
+      gain.dispose();
+      panner.dispose();
+    });
+  }
+
   /** The crack of a cord that is torn or cut. */
   crack(time: number, level: number, pan: number): void {
+    if (!this.clicks) return;
     const source = new Tone.ToneBufferSource({ url: this.noise });
-    const filter = new Tone.BiquadFilter({ type: 'lowpass', frequency: Math.min(4600, this.ceiling), Q: 0 });
+    const filter = new Tone.BiquadFilter({ type: 'lowpass', frequency: Math.min(2600, this.ceiling), Q: 0 });
     const gain = new Tone.Gain(0);
-    gain.gain.setValueAtTime(level * 1.2, time);
-    gain.gain.setTargetAtTime(0, time, 0.006);
+    gain.gain.setValueAtTime(0, time);
+    gain.gain.linearRampToValueAtTime(level, time + 0.002);
+    gain.gain.setTargetAtTime(0, time + 0.002, 0.012);
     const panner = new Tone.Panner(clampPan(pan));
     source.chain(filter, gain, panner, this.input);
     source.onended = () => {
@@ -142,7 +312,7 @@ export class Bus {
       gain.dispose();
       panner.dispose();
     };
-    source.start(time, 0.7, 0.04);
+    source.start(time, 0.7, 0.08);
   }
 
   /** Breath: band-limited noise that swells and fades. What is heard where the archive has nothing. */
@@ -165,7 +335,12 @@ export class Bus {
   }
 
   dispose(): void {
-    for (const node of [this.input, this.room, this.wet, this.compressor, this.limiter, this.trim, this.master]) node.dispose();
+    for (const node of [
+      this.input, this.floor, this.floorDry, this.floorLate, this.floorDark, this.floorSend,
+      ...[this.rising, this.sinking].flatMap((line) => [line.door, line.delay, line.band, line.feedback]),
+      this.echoOut, this.echoSend,
+      this.room, this.wet, this.compressor, this.limiter, this.trim, this.master,
+    ]) node.dispose();
     this.noise.dispose();
     this.pulse.dispose();
   }
