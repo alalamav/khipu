@@ -24,11 +24,10 @@
  */
 import * as Tone from 'tone';
 import { mulberry32 } from '../khipu';
-import type { Breath } from './endings';
+import { breathCurve, pinkNoise, type Breath } from './breath';
 
-/** Shape of a breath over its length: sin(pi * t^0.6), a quick rise and a long fall. */
-const BREATH_CURVE: number[] = Array.from({ length: 48 }, (_, i) => Math.sin(Math.PI * Math.pow(i / 47, 0.6)));
-
+/** Seconds of pink noise kept for breath. A breath can last longer: the noise goes round. */
+const PINK_SECONDS = 4;
 /** The limiter acts above this level, in dB below full scale… */
 const LIMIT_DB = -3;
 /** …letting 1 dB out for every this many dB that come in. */
@@ -102,6 +101,7 @@ export class Bus {
   private readonly echoSend: Tone.Gain;
   private echoTime = 0.3;
   private readonly noise: Tone.ToneAudioBuffer;
+  private readonly pink: Tone.ToneAudioBuffer;
   private readonly pulseSamples: Float32Array;
 
   /**
@@ -144,6 +144,7 @@ export class Bus {
     this.sinking = this.echoLine(BAND_FROM / BAND_SPAN);
 
     this.noise = Tone.ToneAudioBuffer.fromArray(whiteNoise(1.5, sr));
+    this.pink = Tone.ToneAudioBuffer.fromArray(pinkNoise(Math.floor(PINK_SECONDS * sr), mulberry32(11)));
     this.pulseSamples = hannPulse(Math.max(3, Math.round(sr * 0.00025)));
     this.pulse = Tone.ToneAudioBuffer.fromArray(this.pulseSamples);
   }
@@ -315,23 +316,25 @@ export class Bus {
     source.start(time, 0.7, 0.08);
   }
 
-  /** Breath: band-limited noise that swells and fades. What is heard where the archive has nothing. */
+  /**
+   * Breath: soft band-limited noise that comes up slowly and dies away over the time the cord swings.
+   * What is heard where the archive has nothing. See breath.ts.
+   */
   breath(time: number, breath: Breath, pan: number, level = 1): void {
-    const source = new Tone.ToneBufferSource({ url: this.noise });
-    const low = new Tone.BiquadFilter({ type: 'lowpass', frequency: Math.min(breath.centre, this.ceiling), Q: 0 });
-    const high = new Tone.BiquadFilter({ type: 'highpass', frequency: 150, Q: 0 });
+    // The noise goes round for as long as the breath lasts, and each breath begins somewhere else in it.
+    const source = new Tone.ToneBufferSource({ url: this.pink, loop: true });
+    const band = new Tone.BiquadFilter({ type: 'bandpass', frequency: Math.min(breath.centre, this.ceiling), Q: breath.q });
     const gain = new Tone.Gain(0);
-    gain.gain.setValueCurveAtTime(BREATH_CURVE, time, breath.length, breath.level * level);
+    gain.gain.setValueCurveAtTime(breathCurve(breath), time, breath.length, breath.level * level);
     const panner = new Tone.Panner(clampPan(pan));
-    source.chain(low, high, gain, panner, this.input);
+    source.chain(band, gain, panner, this.input);
     source.onended = () => {
       source.dispose();
-      low.dispose();
-      high.dispose();
+      band.dispose();
       gain.dispose();
       panner.dispose();
     };
-    source.start(time, 0.1, breath.length + 0.02);
+    source.start(time, breath.offset * (PINK_SECONDS - 0.01), breath.length + 0.02);
   }
 
   dispose(): void {
@@ -342,6 +345,7 @@ export class Bus {
       this.room, this.wet, this.compressor, this.limiter, this.trim, this.master,
     ]) node.dispose();
     this.noise.dispose();
+    this.pink.dispose();
     this.pulse.dispose();
   }
 }

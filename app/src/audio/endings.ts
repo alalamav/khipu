@@ -7,7 +7,11 @@
  * whether the sound is cut off. The numbers match the string voice.
  */
 import type { TerminationCode } from '../khipu';
-import { UNPITCHED_DURATION, durationOf, ringTime, type CordSound } from './cordSound';
+import { mulberry32 } from '../khipu/random';
+import { breathOf, breathSeed, type Breath } from './breath';
+import { durationOf, ringTime, unpitchedDuration, type CordSound } from './cordSound';
+
+export type { Breath };
 
 /** One sounding component of a cord. A plain cord has one; a ravelled one has four. */
 export interface Strand {
@@ -16,13 +20,6 @@ export interface Strand {
   level: number;
   /** Seconds to fall by 60 dB. */
   ring: number;
-}
-
-/** A burst of filtered noise: what stands in for whatever was not recorded. */
-export interface Breath {
-  level: number;
-  centre: number;
-  length: number;
 }
 
 export interface Ending {
@@ -50,14 +47,17 @@ export function endingOf(sound: CordSound, f0: number, random: () => number): En
   const term: TerminationCode | null = sound.termination;
   const t60 = ringTime(sound.lightness);
   const breaths: Breath[] = [];
+  /** What makes this cord's breath its own. Drawn apart from `random`, which the rest of the sound depends on. */
+  const vary = mulberry32(breathSeed(sound.seed));
 
   if (!f0) {
-    // length not recorded: no pitch, only breath
+    // length not recorded: no pitch, only breath, for as long as the cord swings
+    const duration = unpitchedDuration(sound.lightness);
     return {
-      duration: UNPITCHED_DURATION,
+      duration,
       strands: [],
       stop: null,
-      breaths: [{ level: 0.55, centre: 500 + 900 * random(), length: 1.1 }],
+      breaths: [breathOf(0.4, 500 + 900 * random(), duration, vary)],
     };
   }
 
@@ -68,7 +68,7 @@ export function endingOf(sound: CordSound, f0: number, random: () => number): En
   switch (term) {
     case null:
       strands = [{ ratio: 1, level: 0.3, ring: t60 * 0.5 }];
-      breaths.push({ level: 0.4, centre: f0 * 2, length: 1.2 });
+      breaths.push(breathOf(0.3, f0 * 2, duration, vary));
       break;
     case 'TT':
       strands = [{ ratio: 1, level: 0.9, ring: 0.16 }];
@@ -103,7 +103,8 @@ export function endingOf(sound: CordSound, f0: number, random: () => number): En
 
   // a worn cord carries noise in proportion to its wear
   if (sound.integrity < 1) {
-    breaths.push({ level: 0.35 * (1 - Math.max(0, sound.integrity)), centre: 1200, length: Math.min(duration, 0.9) });
+    // on a cord that stops, it has died away by then
+    breaths.push(breathOf(0.28 * (1 - Math.max(0, sound.integrity)), 1200, stop ? stop.at : duration, vary));
   }
   return { duration, strands, stop, breaths };
 }

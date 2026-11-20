@@ -236,13 +236,17 @@ In the string voice a "strand" is a string. In the operator voice it is a sine o
 
 ### What was not recorded
 
-Breath is band-limited noise that swells quickly and fades slowly (its envelope is `sin(π t^0.6)` over its length). It stands for two blanks, and for wear:
+Breath is pink noise through a band-pass filter. It comes up slowly (0.15 to 0.3 s) and dies away over the time the cord swings: its envelope is `sin²(π t / 2 attack) × (1 − t / length)³`. It stands for two blanks, and for wear:
 
 | | Breath |
 |---|---|
-| Length not recorded | String and operator voices: the whole sound is 1.1 s of breath centred between 500 and 1400 Hz, with no pitch. Resonator voice: no breath for this; the knots ring as usual |
-| Termination not recorded | Every voice: 1.2 s of breath, centred an octave above the cord, over a faint cord |
-| The cord is worn | Every voice: up to 0.9 s centred at 1200 Hz, at a level of 0.35 × (1 − integrity) |
+| Length not recorded | String and operator voices: the whole sound is breath, for the cord's ring time (4.5 to 7.5 s), centred between 500 and 1400 Hz, at a level of 0.4, with no pitch. Resonator voice: no breath for this; the knots ring as usual |
+| Termination not recorded | Every voice: breath for as long as the sound lasts (0.6 of the ring), centred an octave above the cord, at a level of 0.3, over a faint cord |
+| The cord is worn | Every voice: breath for as long as the sound lasts, centred at 1200 Hz, at a level of 0.28 × (1 − integrity). On a cord that stops (broken, cut, unfinished) it goes when the cord does |
+
+**No two cords breathe quite alike.** From the cord's seed, each breath is given its own centre (0.88 to 1.14 of the above), band width (Q 0.9 to 1.6), rise, length (0.85 to 1 of the above) and, in the live voices, its own place in the noise. The same cord in the same state always breathes the same way. This variation is ours, not the archive's.
+
+Breath used to be white noise under a low-pass, about a second long, peaking a quarter of the way in, and every breath in the live voices was the same stretch of noise. For the same level it is about as loud as it was (measured at 1000 Hz); the levels were lowered from 0.55, 0.4 and 0.35.
 
 Other blanks are not breath. An unrecorded colour is given a middle ring time. An unrecorded knot direction puts the knot in the centre (and, in the string voice only, replaces 45% of its ping with noise). An unrecorded knot position gives the knot an arbitrary moment (and, in the string voice, makes it a tick of noise).
 
@@ -652,7 +656,8 @@ Each mapping is in one place, and the two patch builders are pure functions that
 | How the modulation settles; the waveform of the operators | [`OperatorVoice.ts`](../app/src/audio/OperatorVoice.ts) |
 | The number-to-pitch scale, strikes, panning of knots, the sharing of the filters | [`resonatorPatch.ts`](../app/src/audio/resonatorPatch.ts) |
 | The filters and the strike | [`ResonatorVoice.ts`](../app/src/audio/ResonatorVoice.ts) |
-| Room, compressor, limiter, breath, crack; the floor and its echoes | [`bus.ts`](../app/src/audio/bus.ts) |
+| Breath: its noise, band, envelope and variation | [`breath.ts`](../app/src/audio/breath.ts); its levels and centres in `endings.ts` and `stringVoice.ts` |
+| Room, compressor, limiter, crack; the floor and its echoes | [`bus.ts`](../app/src/audio/bus.ts) |
 | Hum, grains, snaps; how many sounds at once | [`AudioEngine.ts`](../app/src/audio/AudioEngine.ts) |
 | What the ledger prints for each voice | [`views.ts`](../app/src/piece/views.ts) |
 | The wear rule | [`HangingKhipu.ts`](../app/src/khipu/HangingKhipu.ts) |

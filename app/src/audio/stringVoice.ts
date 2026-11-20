@@ -20,12 +20,14 @@
  * synthString is pure: no Web Audio, the same input always gives the same
  * samples. It began as a line-for-line port of the first prototype's synthesis.
  * It no longer sounds the same: a cord now rings for as long as it swings
- * (ringTime), and a broken or cut cord stops less abruptly. The order of the
+ * (ringTime), a broken or cut cord stops less abruptly, and breath is softer
+ * and lasts as long as the swing (breath.ts). The order of the
  * arithmetic and of the calls to the random generator still matters: the
  * frozen cases in stringVoice.test.ts notice any change.
  */
 import { mulberry32 } from '../khipu';
-import { UNPITCHED_DURATION, cordFrequency, durationOf, ringTime, type CordSound } from './cordSound';
+import { breathOf, breathSeed, renderBreath } from './breath';
+import { cordFrequency, durationOf, ringTime, unpitchedDuration, type CordSound } from './cordSound';
 
 export interface StereoSamples {
   L: Float32Array;
@@ -57,7 +59,7 @@ export function synthString(spec: CordSound, sr: number, clicks = true): StereoS
   const term = spec.termination ?? '';
   const f0 = cordFrequency(spec.length);
   let dur = durationOf(spec.termination, spec.lightness);
-  if (!f0) dur = UNPITCHED_DURATION;
+  if (!f0) dur = unpitchedDuration(spec.lightness);
   const n = Math.floor(dur * sr);
   const mono = new Float32Array(n);
   const L = new Float32Array(n);
@@ -97,18 +99,9 @@ export function synthString(spec: CordSound, sr: number, clicks = true): StereoS
   }
 
   // ---- breath: what a cord with no pitch sounds like ---------------
+  const vary = mulberry32(breathSeed(spec.seed));
   function breath(amp: number, centre: number, len: number): void {
-    let lp1 = 0;
-    let lp2 = 0;
-    const a1 = Math.min(0.9, (2 * Math.PI * centre) / sr);
-    const m = Math.min(n, Math.floor(len * sr));
-    for (let j = 0; j < m; j++) {
-      const t = j / m;
-      const e = Math.sin(Math.PI * Math.pow(t, 0.6));
-      lp1 += a1 * (rnd() * 2 - 1 - lp1);
-      lp2 += 0.02 * (lp1 - lp2);
-      mono[j] += (lp1 - lp2) * e * amp;
-    }
+    renderBreath(breathOf(amp, centre, len, vary), sr, rnd, mono);
   }
 
   const bright = 0.25 + 0.7 * lum;
@@ -116,11 +109,11 @@ export function synthString(spec: CordSound, sr: number, clicks = true): StereoS
 
   if (!f0) {
     // length not recorded: no string, only breath
-    breath(0.55, 500 + 900 * rnd(), 1.1);
+    breath(0.4, 500 + 900 * rnd(), dur);
   } else if (term === '') {
     // termination not recorded: the string is there but barely, under breath
     string(f0, 0.3, t60 * 0.5, bright * 0.6);
-    breath(0.4, f0 * 2, 1.2);
+    breath(0.3, f0 * 2, dur);
   } else if (term === 'TT') {
     // canutito: the end is wrapped in thread — a damped, muted string
     string(f0, 0.9, 0.16, bright * 0.35);
@@ -142,7 +135,7 @@ export function synthString(spec: CordSound, sr: number, clicks = true): StereoS
   }
 
   // a worn cord carries noise in proportion to its wear
-  if (integ < 1) breath(0.35 * (1 - integ), 1200, Math.min(dur, 0.9));
+  if (integ < 1) breath(0.28 * (1 - integ), 1200, dur);
 
   // ---- stereo placement of the cord itself ---------------------------
   const pan = Math.max(-1, Math.min(1, spec.pan || 0));

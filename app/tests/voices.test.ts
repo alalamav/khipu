@@ -4,6 +4,7 @@
  * the loudspeaker is measured in the browser by src/selftest.ts.
  */
 import { describe, expect, it } from 'vitest';
+import { breathCurve, breathEnvelope } from '../src/audio/breath';
 import { cordFrequency, ringTime, soundOf, type CordSound } from '../src/audio/cordSound';
 import { endingOf } from '../src/audio/endings';
 import { MAX_MODULATORS, buildOperatorPatch, operatorsOf } from '../src/audio/operatorPatch';
@@ -47,6 +48,36 @@ describe('what all voices share', () => {
     const ending = endingOf(cordSound({ length: null }), 0, mulberry32(1));
     expect(ending.strands).toEqual([]);
     expect(ending.breaths).toHaveLength(1);
+  });
+
+  it('breathes for as long as the cord swings, coming up slowly and dying away to nothing', () => {
+    const [breath] = endingOf(cordSound({ length: null, lightness: 1 }), 0, mulberry32(1)).breaths;
+    expect(breath.length).toBeGreaterThan(0.84 * ringTime(1));
+    expect(breath.length).toBeLessThanOrEqual(ringTime(1));
+    expect(breath.attack).toBeGreaterThanOrEqual(0.15);
+    expect(breathEnvelope(breath, 0)).toBe(0);
+    expect(breathEnvelope(breath, 0.02)).toBeLessThan(0.05); // no puff at the start
+    expect(breathEnvelope(breath, breath.length)).toBe(0);
+    const curve = breathCurve(breath);
+    expect(Math.max(...curve)).toBeGreaterThan(0.8);
+    expect(curve.indexOf(Math.max(...curve)) / curve.length).toBeLessThan(0.1); // the fall is the long part
+  });
+
+  it('gives each cord a breath of its own, and the same cord the same breath', () => {
+    const breathOfSeed = (seed: number) => endingOf(cordSound({ termination: null, seed }), 220, mulberry32(seed)).breaths[0];
+    expect(breathOfSeed(5)).toEqual(breathOfSeed(5));
+    const a = breathOfSeed(5);
+    const b = breathOfSeed(6);
+    expect([a.centre, a.q, a.length, a.offset]).not.toEqual([b.centre, b.q, b.length, b.offset]);
+    for (const breath of [a, b]) {
+      expect(breath.centre / 440).toBeGreaterThan(0.87);
+      expect(breath.centre / 440).toBeLessThan(1.15);
+    }
+  });
+
+  it('lets the breath of a worn cord die away by the time a broken cord stops', () => {
+    const ending = endingOf(cordSound({ termination: 'B', integrity: 0.5 }), 220, mulberry32(1));
+    expect(ending.breaths[0].length).toBeLessThanOrEqual(ending.stop!.at);
   });
 
   it('hears a parted cord as broken, whatever the archive says of its end', () => {

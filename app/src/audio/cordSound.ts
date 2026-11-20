@@ -103,8 +103,10 @@ export const DURATION: Readonly<Record<TerminationCode | '', number>> = {
  */
 export const FIXED_DURATION: Readonly<Partial<Record<TerminationCode, number>>> = { C: 0.9, TT: 0.75 };
 
-/** Seconds of sound for a cord with no pitch at all. */
-export const UNPITCHED_DURATION = 1.2;
+/** Seconds of sound for a cord with no pitch at all: it is only breath, for as long as it swings. */
+export function unpitchedDuration(lightness: number): number {
+  return ringTime(clamp01(lightness));
+}
 
 /** Seconds of sound for a cord that ends this way (null: not recorded) and is this light. */
 export function durationOf(termination: TerminationCode | null, lightness: number): number {

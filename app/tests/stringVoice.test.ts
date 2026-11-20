@@ -10,7 +10,7 @@
  */
 import { createHash } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
-import { UNPITCHED_DURATION, cordFrequency, durationOf, type CordSound } from '../src/audio/cordSound';
+import { cordFrequency, durationOf, unpitchedDuration, type CordSound } from '../src/audio/cordSound';
 import { knotPartial, synthString } from '../src/audio/stringVoice';
 import { knot } from './fixtures';
 
@@ -59,7 +59,8 @@ type Golden = readonly [label: string, spec: CordSound, digest: string];
  * and what it calls), each with a digest of the samples it gave when these
  * were taken. (The voice began sample-identical to the first prototype. The
  * digests were taken again when its endings were softened, and when a cord
- * was made to ring for as long as it swings.)
+ * was made to ring for as long as it swings, and when breath was made softer
+ * and as long as the swing.)
  *
  * The digests are here to notice ANY change in what is heard: a sum taken in
  * another order, or one more call to the random generator, is enough. A
@@ -88,13 +89,13 @@ const GOLDEN: readonly Golden[] = [
   ['doubled', cordSound({ termination: 'D' }), 'aaca1ed3ac39b165'],
   ['unfinished', cordSound({ termination: 'U' }), '5a23620a9906e2fa'],
   ['canutito', cordSound({ termination: 'TT' }), 'c7d2c6a7b6bc3895'],
-  ['termination not recorded', cordSound({ termination: null }), '5da06e033fbfde3c'],
+  ['termination not recorded', cordSound({ termination: null }), '6a255bbfe670ff16'],
   // ---- what else its row may say ----
   // no pitch: only breath; its knot can only tick; and though the cord is broken there is no string to tear
-  ['length not recorded', cordSound({ length: null, termination: 'B', knots: [knot({ position: 12, direction: 'Z' })] }), '53daf51710010dd8'],
+  ['length not recorded', cordSound({ length: null, termination: 'B', knots: [knot({ position: 12, direction: 'Z' })] }), 'da35423d73ed7f56'],
   // 22 Hz, folded up two octaves to 88
   ['three metres long, at the left end of the main cord', cordSound({ length: 300, pan: -0.7 }), '364111a9de4e4c63'],
-  ['worn', cordSound({ integrity: 0.4 }), 'c43ad12cdd9561af'],
+  ['worn', cordSound({ integrity: 0.4 }), 'b602ca047e931016'],
   // ---- knots ----
   [
     'knots as recorded, at the right end of the main cord',
@@ -158,7 +159,7 @@ describe('every sound of the string voice', () => {
 
   it('lasts the time set for the way the cord ends, or the time set for a cord with no pitch', () => {
     for (const [label, spec] of GOLDEN) {
-      const seconds = spec.length === null ? UNPITCHED_DURATION : durationOf(spec.termination, spec.lightness);
+      const seconds = spec.length === null ? unpitchedDuration(spec.lightness) : durationOf(spec.termination, spec.lightness);
       const samples = Math.floor(seconds * SAMPLE_RATE);
       const { L, R } = synthString(spec, SAMPLE_RATE);
       expect([L.length, R.length], label).toEqual([samples, samples]);
