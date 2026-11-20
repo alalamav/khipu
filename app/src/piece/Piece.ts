@@ -310,6 +310,7 @@ export class Piece {
    */
   layoutChanged(): void {
     if (this.fitted) this.place();
+    else if (this.hanging) this.stage?.setRoom(this.room());
   }
 
   zoom(factor: number): void {
@@ -321,12 +322,16 @@ export class Piece {
   private place(): void {
     const stage = this.stage;
     if (!stage || !this.hanging) return;
-    const width = window.innerWidth;
-    const wide = width >= WIDE_FROM;
-    const margins = this.margins?.() ?? { left: 40, right: wide ? 356 : 40, top: 112, bottom: wide ? 168 : 300 };
+    const margins = this.room();
     stage.fit(margins);
-    if (this.closeUp) stage.zoomAt(this.closeUp, width * 0.4, margins.top);
+    if (this.closeUp) stage.zoomAt(this.closeUp, window.innerWidth * 0.4, margins.top);
     this.fitted = true;
+  }
+
+  /** The room the interface leaves for the khipu. */
+  private room(): FitMargins {
+    const wide = window.innerWidth >= WIDE_FROM;
+    return this.margins?.() ?? { left: 40, right: wide ? 356 : 40, top: 112, bottom: wide ? 168 : 300 };
   }
 
   /** The visitor moved or zoomed the view. It is theirs now, and is not placed for them again. */

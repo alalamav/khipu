@@ -6,7 +6,7 @@ import { Recorded } from './bits';
 export function Header({ header, loading, ref }: { header: HeaderView | null; loading: boolean; ref?: Ref<HTMLElement> }) {
   return (
     <header ref={ref} className="absolute top-[18px] left-3.5 max-w-[90vw] desk:left-6 desk:max-w-[min(56vw,640px)]">
-      <h1 className="text-[26px] leading-tight tracking-[0.01em] text-ink-bright italic">Just Ends</h1>
+      <h1 className="text-[26px] leading-tight tracking-[0.01em] text-ink-bright">Just Ends</h1>
       {header ? (
         <>
           <p className="mt-1.5 font-mono text-xs">

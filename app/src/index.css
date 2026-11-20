@@ -5,8 +5,11 @@
  * place colour appears is on the cords, where it is data.
  */
 @theme {
-  --font-serif: "Iowan Old Style", "Palatino Linotype", Palatino, "Book Antiqua", Georgia, serif;
-  --font-mono: ui-monospace, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+  /* Alegreya for the piece's own words. Alegreya Sans stands in the mono slot, for the database and for
+     anything that changes quickly: its figures are set lining and tabular, so counts do not jitter. */
+  --font-serif: "Alegreya", "Iowan Old Style", Palatino, Georgia, serif;
+  --font-mono: "Alegreya Sans", ui-sans-serif, system-ui, "Helvetica Neue", Arial, sans-serif;
+  --font-mono--font-feature-settings: "tnum", "lnum";
 
   --color-ground: #0c0c0d;
   --color-ground-raised: #141415;
@@ -50,7 +53,7 @@
 }
 
 @layer components {
-  /* The piece speaks in serif italic; the database speaks in monospace. */
+  /* The piece speaks in Alegreya; the database speaks in Alegreya Sans. */
   .btn {
     @apply inline-flex h-8 min-w-8 cursor-pointer items-center justify-center rounded-sm border border-line bg-white/5 px-3 font-mono text-xs whitespace-nowrap text-ink transition-colors hover:bg-white/10 hover:text-ink-bright;
   }

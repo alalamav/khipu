@@ -157,6 +157,8 @@ export class Stage implements WearListener {
   private grain = 0.1;
 
   private readonly view = { x: 0, y: 0, distance: 100, fitScale: 1 };
+  /** The room the interface leaves free. The view is kept from scrolling the khipu out of it. */
+  private room: FitMargins | null = null;
   private cssWidth = 1;
   private cssHeight = 1;
   private hand: number | null = null;
@@ -708,6 +710,7 @@ export class Stage implements WearListener {
     if (!this.hanging) return;
     const freeW = Math.max(40, this.cssWidth - margins.left - margins.right);
     const freeH = Math.max(40, this.cssHeight - margins.top - margins.bottom);
+    this.room = margins;
     // height on screen: the hanging cords, plus the near half of the bed seen from above
     const tall = (this.topY - this.floorY) * Math.cos(PITCH) + this.bedDepth * 0.5 * Math.sin(PITCH);
     const scale = Math.max(0.05, Math.min(freeW / this.width, freeH / tall));
@@ -717,20 +720,24 @@ export class Stage implements WearListener {
     this.view.y = (this.topY + this.floorY) / 2;
     this.placeCamera();
     // slide what is drawn into the middle of the free area
-    const a = this.project(0, this.topY, 0, this.v0);
-    const ax = a.x, ay = a.y;
-    const b = this.project(this.width, this.floorY, this.bedDepth / 2, this.v0);
-    const cx = (ax + b.x) / 2, cy = (ay + b.y) / 2;
-    this.drag(cx, cy, margins.left + freeW / 2, margins.top + freeH / 2);
+    this.constrain();
+  }
+
+  /** The room around the stage changed, and the view is the visitor's own: keep it, but inside the new room. */
+  setRoom(margins: FitMargins): void {
+    this.room = margins;
+    this.constrain();
   }
 
   /** Come closer (factor > 1) or step back, keeping the point under (x, y) where it is. */
   zoomAt(factor: number, x: number, y: number): void {
     const s = this.pxPerCm;
-    const next = clamp(s * factor, this.view.fitScale * 0.5, Math.max(this.view.fitScale * 40, 60));
+    // no further back than the whole khipu: beyond that there is nothing to see
+    const next = clamp(s * factor, this.view.fitScale, Math.max(this.view.fitScale * 40, 60));
     if (!this.planePoint(x, y, this.v0)) {
       this.setScale(next);
       this.placeCamera();
+      this.constrain();
       return;
     }
     const px = this.v0.x, py = this.v0.y;
@@ -741,14 +748,45 @@ export class Stage implements WearListener {
       this.view.y += py - this.v1.y;
       this.placeCamera();
     }
+    this.constrain();
   }
 
   /** Move the view so that what was under (x0, y0) is under (x1, y1). Canvas pixels. */
   drag(x0: number, y0: number, x1: number, y1: number): void {
+    this.pan(x0, y0, x1, y1);
+    this.constrain();
+  }
+
+  private pan(x0: number, y0: number, x1: number, y1: number): void {
     if (!this.planePoint(x0, y0, this.v0) || !this.planePoint(x1, y1, this.v1)) return;
     this.view.x += this.v0.x - this.v1.x;
     this.view.y += this.v0.y - this.v1.y;
     this.placeCamera();
+  }
+
+  /**
+   * Keep the khipu in the room: the view scrolls inside what is drawn, and stops at its edges. Along an
+   * axis where the whole khipu fits in the room it sits in the middle; where it is larger than the room,
+   * it can be moved only until its edge meets the room's.
+   */
+  private constrain(): void {
+    const room = this.room;
+    if (!room || !this.hanging) return;
+    const left = room.left, top = room.top;
+    const freeW = Math.max(40, this.cssWidth - room.left - room.right);
+    const freeH = Math.max(40, this.cssHeight - room.top - room.bottom);
+    // The plane is seen at a slant, so a move of the view is not quite the same move on screen: go twice.
+    for (let pass = 0; pass < 2; pass++) {
+      const a = this.project(0, this.topY, 0, this.v0);
+      const ax = a.x, ay = a.y;
+      const b = this.project(this.width, this.floorY, this.bedDepth / 2, this.v0);
+      const bx = b.x, by = b.y;
+      const dx = correction(ax, bx, left, left + freeW);
+      const dy = correction(ay, by, top, top + freeH);
+      if (Math.abs(dx) < 0.25 && Math.abs(dy) < 0.25) return;
+      const cx = (ax + bx) / 2, cy = (ay + by) / 2;
+      this.pan(cx, cy, cx + dx, cy + dy);
+    }
   }
 
   /**
@@ -827,4 +865,12 @@ function lookOf(cord: Cord): Look {
     flags: cord.rgb && cord.lightness < 0.17 ? LINE_RIM : 0,
     width: cord.parent ? SUBSIDIARY_WIDTH : 1,
   };
+}
+
+/** How far to move what spans a..b on screen so that it sits in the room lo..hi: centred if it fits, else covering it. */
+function correction(a: number, b: number, lo: number, hi: number): number {
+  if (b - a <= hi - lo) return (lo + hi) / 2 - (a + b) / 2;
+  if (a > lo) return lo - a;
+  if (b < hi) return hi - b;
+  return 0;
 }

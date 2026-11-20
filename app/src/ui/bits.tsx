@@ -98,7 +98,7 @@ export function Sheet({
 export function SheetHead({ title, onClose }: { title: string; onClose: () => void }) {
   return (
     <div className="flex items-start justify-between">
-      <h2 className="mb-3 text-3xl font-normal text-ink-bright italic">{title}</h2>
+      <h2 className="mb-3 text-3xl font-normal text-ink-bright">{title}</h2>
       <button className="btn text-base" onClick={onClose} aria-label="Close">
         ×
       </button>

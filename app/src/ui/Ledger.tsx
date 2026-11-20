@@ -2,8 +2,8 @@ import type { ReactNode, Ref } from 'react';
 import type { Coded, CordRowView, KhipuRecordView, LedgerView } from '../piece/views';
 import { NotRecorded, Recorded, Swatch, fmt } from './bits';
 
-const TITLE = 'mb-2 font-serif text-base text-ink-bright italic';
-const SUBTITLE = 'ml-1.5 font-mono text-[11px] text-ink-dim not-italic';
+const TITLE = 'mb-2 font-serif text-base text-ink-bright';
+const SUBTITLE = 'ml-1.5 font-mono text-[11px] text-ink-dim';
 const QUOTE = 'mt-2.5 font-serif text-[13px] leading-snug text-ink-bright italic';
 const NOTE = 'mt-1.5 font-serif text-xs leading-snug text-ink-dim italic';
 

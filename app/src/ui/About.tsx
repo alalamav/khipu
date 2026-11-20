@@ -3,7 +3,7 @@ import type { ArchiveStats } from '../khipu';
 import { Sheet, SheetHead, Stat } from './bits';
 
 function Heading({ children }: { children: ReactNode }) {
-  return <h3 className="mt-6 mb-2 text-lg text-ink-bright italic">{children}</h3>;
+  return <h3 className="mt-6 mb-2 text-lg font-normal text-ink-bright">{children}</h3>;
 }
 
 function P({ children }: { children: ReactNode }) {
