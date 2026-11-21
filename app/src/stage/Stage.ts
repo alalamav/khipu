@@ -5,7 +5,7 @@
  * Every cord is a rope (RopeSim) hung where the layout puts it. A cord that
  * is touched swings; one that parts or comes away falls as a rope, folds as
  * it lands, and stays on the bed under the khipu with the knots that fell
- * before it.
+ * before it, until the khipu is tied again.
  *
  * Space is in centimetres. x runs along the main cord, y is up (so a cord
  * that the layout puts at depth d hangs at y = -d), z is towards the viewer.
@@ -240,25 +240,20 @@ export class Stage implements WearListener {
   // ───────────────────────── the khipu ─────────────────────────
 
   /**
-   * Hang a khipu. With `fresh`, the bed is swept first; without it (a
-   * re-tying), whatever has already fallen stays where it lies.
+   * Hang a khipu. The bed is swept first: a khipu that is tied again hangs over a
+   * clean sheet, and whatever was still in the air is taken away with the rest.
    */
-  setKhipu(hanging: HangingKhipu | null, fresh: boolean): void {
+  setKhipu(hanging: HangingKhipu | null): void {
     this.hanging = hanging;
     this.marks = [];
     this.hand = null;
     this.cordsDirty = true;
     this.fallenDirty = true;
 
-    if (fresh || !hanging) {
-      this.sim.clear();
-      this.debris = [];
-      this.landed = [];
-      this.flying = [];
-    } else {
-      // cords still tied are taken down; what is loose keeps falling
-      this.sim.prune((rope) => rope.free);
-    }
+    this.sim.clear();
+    this.debris = [];
+    this.landed = [];
+    this.flying = [];
     this.ropes = [];
     this.looks = [];
     if (!hanging) {
@@ -286,16 +281,15 @@ export class Stage implements WearListener {
     sim.floorY = this.floorY;
     sim.radius = CORD_WIDTH * 0.5;
     sim.depositPerPoint = this.grain * 0.22;
-    if (fresh || !sim.bed) {
-      const x0 = -this.width * 0.04;
-      const x1 = this.width * 1.04;
-      const cell = clamp(this.height / 60, 0.4, 2.5);
-      sim.bed = new Bed(
-        x0, x1, -this.bedDepth / 2, this.bedDepth / 2,
-        clamp(Math.round((x1 - x0) / cell), 24, 400),
-        clamp(Math.round(this.bedDepth / (cell * 1.6)), 8, 40),
-      );
-    }
+    // a new bed, with nothing heaped on it
+    const x0 = -this.width * 0.04;
+    const x1 = this.width * 1.04;
+    const cell = clamp(this.height / 60, 0.4, 2.5);
+    sim.bed = new Bed(
+      x0, x1, -this.bedDepth / 2, this.bedDepth / 2,
+      clamp(Math.round((x1 - x0) / cell), 24, 400),
+      clamp(Math.round(this.bedDepth / (cell * 1.6)), 8, 40),
+    );
     for (const sprites of [this.fallenGrains, this.flyingGrains]) sprites.radius = this.grain * 0.8;
 
     this.paper.scale.set(this.width * 1.08, this.bedDepth, 1);

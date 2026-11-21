@@ -241,7 +241,7 @@ The cords are simulated as ropes. A touched cord swings and comes back to rest. 
 - Set **wear** from "gloves" (nothing is lost) to "centuries".
 - Choose a **voice**: string, operator or resonator.
 - Watch the ledger: archive on the left, now on the right, and under them what the voice makes of the cord in hand.
-- **Re-tie** from the archive. The sediment from before stays.
+- **Re-tie** from the archive. The floor is tidied: the sediment from before is cleared away.
 - Open the catalogue and sort the 619 by size, by how broken they are, or by how little was recorded.
 
 ### What it is for

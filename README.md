@@ -54,8 +54,8 @@ It has been run in Chrome only.
 - Move the pointer across the cords to sound them. They swing. On a touch screen, drag with one finger.
 - **Read** passes a hand along the main cord, left to right, and repeats. Space does the same.
 - **wear** sets how much each touch costs. At zero nothing is lost.
-- **Re-tie** hangs the khipu again from its rows. What fell stays on the floor, up to 2,500 cords;
-  beyond that the oldest are cleared a few at a time.
+- **Re-tie** hangs the khipu again from its rows and tidies the floor: what had fallen is cleared away.
+  (Between re-tyings the floor keeps up to 2,500 fallen cords; beyond that the oldest are cleared a few at a time.)
 - **voice** chooses string, operator or resonator. The operator voice has a
   **depth** slider (0 is bare sine tones); the resonator has **ring** (how long the filters ring).
 - The ledger shows the row of the cord under the hand: what the archive says,

@@ -258,7 +258,7 @@ export class Piece {
     if (this.archive) void this.load(this.archive.neighbour(this.state.khipuId, step));
   }
 
-  /** Tie the khipu again from its rows. What has fallen stays on the floor. */
+  /** Tie the khipu again from its rows. The floor is tidied: what had fallen is cleared away. */
   retie(): void {
     if (!this.khipu) return;
     this.reading = false;
@@ -378,7 +378,7 @@ export class Piece {
 
     this.forward = 0;
 
-    this.stage?.setKhipu(hanging, fresh);
+    this.stage?.setKhipu(hanging);
     this.place();
     // String sounds are kept by cord and state; the ones kept so far are of cords that no longer hang.
     this.audio.forget();
@@ -655,7 +655,7 @@ export class Piece {
     size();
     if (this.hanging) {
       // the canvas arrived after the khipu
-      stage.setKhipu(this.hanging, true);
+      stage.setKhipu(this.hanging);
       this.place();
     }
 
