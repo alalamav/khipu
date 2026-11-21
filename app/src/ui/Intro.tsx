@@ -5,11 +5,11 @@ import { Sheet, Stat } from './bits';
 export function Intro({ stats, onEnter }: { stats: ArchiveStats | null; onEnter: () => void }) {
   return (
     <Sheet label="Just Ends">
-      <h2 className="mb-3 text-3xl text-ink-bright">Just Ends</h2>
-      <p className="mb-4 border-y border-line pt-2.5 pb-3 font-mono text-[13px]">
+      <h2 className="mb-4 text-3xl text-ink-bright">Just Ends</h2>
+      {/* <p className="mb-4 border-y border-line pt-2.5 pb-3 font-mono text-[13px]">
         <span className="mr-1.5 text-ink-bright">U</span> unfinished: <q>not knotted; not broken; not cut... just ends</q>
         <span className="mt-0.5 block text-[11px] text-ink-faint">termination code, Open Khipu Repository</span>
-      </p>
+      </p> */}
       <div className="space-y-3 text-[16.5px]">
         <p>
           A khipu is an ancient Andean record made of knotted cord, tied and read tactilely and visually. Those that survive

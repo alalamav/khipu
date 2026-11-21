@@ -115,9 +115,9 @@ export class AudioEngine {
   /** How much of the khipu has gone, 0 to 1. */
   private erosion = 0;
   /** The snap of a cord parting and the crack of a torn or cut cord are heard. */
-  private clicks = true;
+  private clicks = false;
   /** Breath is heard: where the archive has nothing, and on worn cords. */
-  private breaths = true;
+  private breaths = false;
 
   /**
    * Bring the engine up. Browsers only let audio begin from a click or a key

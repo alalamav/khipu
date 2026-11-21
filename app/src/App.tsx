@@ -41,6 +41,8 @@ export function App() {
   const header = useRef<HTMLElement>(null);
   const ledger = useRef<HTMLElement>(null);
   const footer = useRef<HTMLElement>(null);
+  // Under the khipu, on a small screen, the ledger is one line until the visitor opens it.
+  const [ledgerOpen, setLedgerOpen] = useState(false);
 
   // Open the archive, and follow the address: #KH0438 names the khipu to hang.
   useEffect(() => {
@@ -76,12 +78,13 @@ export function App() {
     };
   }, [piece]);
 
-  // The words around the khipu change size with each khipu, so place it again once they are in.
+  // The words around the khipu change size with each khipu, and the ledger under it when it is opened or
+  // closed, so place it again once they are in.
   useLayoutEffect(() => {
     piece.layoutChanged();
-  }, [piece, state.header]);
+  }, [piece, state.header, ledgerOpen]);
 
-  // The bar at the bottom changes height too: it wraps on a narrower window, and two of the voices add a slider.
+  // The bar at the bottom changes height too: it shows more or less of itself as the window allows.
   useEffect(() => {
     if (!footer.current) return;
     const observer = new ResizeObserver(() => piece.layoutChanged());
@@ -140,7 +143,13 @@ export function App() {
         <div className="pointer-events-none fixed inset-0 z-[1] grid grid-rows-[minmax(0,1fr)_auto]">
           <div className="relative">
             <Header ref={header} header={state.header} loading={state.status === 'loading'} />
-            <Ledger ref={ledger} ledger={state.ledger} />
+            <Ledger
+              ref={ledger}
+              ledger={state.ledger}
+              facts={state.header?.facts}
+              open={ledgerOpen}
+              onToggle={() => setLedgerOpen((was) => !was)}
+            />
             {state.error && (
               <p
                 role="alert"

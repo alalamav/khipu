@@ -181,8 +181,8 @@ export class Piece {
       wear: this.wearAmount,
       volume: 0.8,
       drone: true,
-      clicks: true,
-      breath: true,
+      clicks: false,
+      breath: false,
       voice: this.audio.settings.kind,
       depth: this.audio.settings.depth,
       ring: this.audio.settings.ring,
@@ -341,11 +341,6 @@ export class Piece {
   layoutChanged(): void {
     if (this.fitted) this.place();
     else if (this.hanging) this.stage?.setRoom(this.room());
-  }
-
-  zoom(factor: number): void {
-    this.stage?.zoomAt(factor, window.innerWidth / 2, window.innerHeight / 2);
-    this.viewChosen();
   }
 
   /** Fit the khipu into the room the interface leaves. On a link to a close view, then go that close. */

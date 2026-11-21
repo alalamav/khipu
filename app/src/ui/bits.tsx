@@ -67,7 +67,7 @@ export function Sheet({
 
   return (
     <div
-      className="fixed inset-0 z-10 flex items-center justify-center bg-black/75 p-6 backdrop-blur-sm"
+      className="fixed inset-0 z-10 flex items-center justify-center bg-black/75 p-6 backdrop-blur-sm max-sm:p-3"
       onPointerDown={(e) => {
         pressedOutside.current = e.target === e.currentTarget;
       }}
