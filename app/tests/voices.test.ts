@@ -363,10 +363,10 @@ describe('resonator voice: the cord as its numbers', () => {
 });
 
 describe('a cord landing', () => {
-  it('knocks at a harmonic of the hum, from the sixth to the twelfth, whatever the cord and the hum', () => {
-    for (const hum of [42, 55, 83.5]) {
+  it('knocks at a harmonic of the drone, from the sixth to the twelfth, whatever the cord and the drone', () => {
+    for (const drone of [42, 55, 83.5]) {
       for (let cm = 0.5; cm < 420; cm *= 1.07) {
-        const h = landingHarmonic(cm, 0.5, hum);
+        const h = landingHarmonic(cm, 0.5, drone);
         expect(Number.isInteger(h)).toBe(true);
         expect(h).toBeGreaterThanOrEqual(6);
         expect(h).toBeLessThanOrEqual(12);
@@ -375,7 +375,7 @@ describe('a cord landing', () => {
   });
 
   it('keeps the pitch of the cord, by octaves', () => {
-    // a 30 cm cord is 220 Hz: its octave is the eighth harmonic of a 55 Hz hum
+    // a 30 cm cord is 220 Hz: its octave is the eighth harmonic of a 55 Hz drone
     expect(landingHarmonic(30, 0.5, 55)).toBe(8);
     // a 15 cm cord is the octave above, and lands on the same harmonic
     expect(landingHarmonic(15, 0.5, 55)).toBe(8);

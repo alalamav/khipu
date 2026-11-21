@@ -83,7 +83,7 @@ export function About({ stats, onClose }: { stats: ArchiveStats | null; onClose:
               'cords tied to a cord',
               'a touch passes down. Each subsidiary is touched after the cord it hangs from, more softly, and its own after it. The first eight on a cord are heard; all of them are worn.',
             ],
-            ['main cord length', 'the low hum underneath.'],
+            ['main cord length', 'the low drone underneath.'],
             [
               'an ending that was not recorded',
               'breath, with the cord barely there under it. A cord worn by reading carries breath too, in proportion to its wear.',

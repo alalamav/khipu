@@ -29,8 +29,8 @@ export type Overlay = 'intro' | 'catalogue' | 'about' | null;
 
 /** The longest ?ff= that is honoured, in seconds of reading. */
 const MAX_FAST_FORWARD = 3600;
-/** The hum stays up for this long after the pointer last moved, in milliseconds. Then it begins to go down. */
-const HUM_HOLD_MS = 2000;
+/** The drone stays up for this long after the pointer last moved, in milliseconds. Then it begins to go down. */
+const DRONE_HOLD_MS = 2000;
 /** Milliseconds of a frame that a fast-forward may take. The rest is left for drawing and for the visitor. */
 const FORWARD_SLICE_MS = 40;
 
@@ -49,8 +49,8 @@ export interface PieceState {
   finished: { cords: number; knots: number; value: number } | null;
   wear: number;
   volume: number;
-  /** The hum of the main cord is heard. */
-  hum: boolean;
+  /** The drone of the main cord is heard. */
+  drone: boolean;
   /** The snap of a cord parting and the crack of a torn or cut cord are heard. */
   clicks: boolean;
   /** Breath is heard: where a length or an ending was not recorded, and on worn cords. */
@@ -180,7 +180,7 @@ export class Piece {
       finished: null,
       wear: this.wearAmount,
       volume: 0.8,
-      hum: true,
+      drone: true,
       clicks: true,
       breath: true,
       voice: this.audio.settings.kind,
@@ -294,9 +294,9 @@ export class Piece {
     this.set({ volume });
   }
 
-  setHum(hum: boolean): void {
-    this.audio.setHum(hum);
-    this.set({ hum });
+  setDrone(drone: boolean): void {
+    this.audio.setDroneOn(drone);
+    this.set({ drone });
   }
 
   setClicks(clicks: boolean): void {
@@ -570,8 +570,8 @@ export class Piece {
 
       if (this.forward > 0) this.runForward();
       else this.step(dt, false);
-      // The hum is there while the khipu is attended to: a hand moving, or a reading that can be heard.
-      this.audio.setHumActive((this.reading && this.forward === 0) || performance.now() - this.lastMoveAt < HUM_HOLD_MS);
+      // The drone is there while the khipu is attended to: a hand moving, or a reading that can be heard.
+      this.audio.setDroneActive((this.reading && this.forward === 0) || performance.now() - this.lastMoveAt < DRONE_HOLD_MS);
       this.stage?.render();
       this.flush();
     } catch (error) {
@@ -648,7 +648,7 @@ export class Piece {
 
   private debugLine(): string | null {
     if (!this.params.debug) return null;
-    return `audio ${this.audio.state}, ${this.audio.played} cords sounded, ${this.audio.voices} voices, ${this.audio.landings} landings, hum ${this.audio.humming ? 'up' : 'down'}`;
+    return `audio ${this.audio.state}, ${this.audio.played} cords sounded, ${this.audio.voices} voices, ${this.audio.landings} landings, drone ${this.audio.droning ? 'up' : 'down'}`;
   }
 
   // ───────────────────────── the canvas ─────────────────────────

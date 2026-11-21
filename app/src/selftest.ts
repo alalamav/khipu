@@ -394,12 +394,12 @@ async function levelTests(): Promise<void> {
 }
 
 /**
- * The hum's door: what comes in at `under` gives way while something sounds at `input`, and comes back.
- * A steady 3 kHz tone stands for the hum, and a second of a 200 Hz tone for a cord. The same is rendered
+ * The drone's door: what comes in at `under` gives way while something sounds at `input`, and comes back.
+ * A steady 3 kHz tone stands for the drone, and a second of a 200 Hz tone for a cord. The same is rendered
  * with the steady tone at `input`, where nothing gives way, so that what the compressor does is left out.
  */
-async function humTests(): Promise<void> {
-  say('\nTHE HUM, under the voices\n');
+async function droneTests(): Promise<void> {
+  say('\nTHE DRONE, under the voices\n');
 
   const probe = 3000;
   const voice = 0.12;
@@ -427,10 +427,10 @@ async function humTests(): Promise<void> {
   const [before, during, after] = under.map((level, i) => db(level / plain[i]));
   // a sine of amplitude a is 2a/pi once rectified and smoothed
   const expected = db(1 - 0.45 * Math.tanh((6 * 2 * voice) / Math.PI));
-  check(Math.abs(before) < 0.1, 'in silence the hum is not turned down', `${before.toFixed(2)} dB`);
+  check(Math.abs(before) < 0.1, 'in silence the drone is not turned down', `${before.toFixed(2)} dB`);
   check(
     Math.abs(during - expected) < 0.4,
-    'while a cord sounds the hum gives way a little',
+    'while a cord sounds the drone gives way a little',
     `${during.toFixed(2)} dB under a tone at ${fmtDb(voice)}; the curve says ${expected.toFixed(2)} dB`,
   );
   check(Math.abs(after) < 0.1, 'and it comes back when the cord is over', `${after.toFixed(2)} dB, 1.5 s after`);
@@ -442,7 +442,7 @@ async function run(): Promise<void> {
   try {
     await operatorTests();
     await resonatorTests();
-    await humTests();
+    await droneTests();
     await levelTests();
     say(`\n${passed} passed, ${failed} failed`);
   } catch (error) {

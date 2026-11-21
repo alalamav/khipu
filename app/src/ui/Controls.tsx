@@ -181,12 +181,12 @@ export function Controls({
         <Group>
           <Slider label="sound" title="Volume" min={0} max={1} value={state.volume} onChange={(v) => piece.setVolume(v)} />
           <button
-            className={'btn' + (state.hum ? ' btn-on' : '')}
-            aria-pressed={state.hum}
-            onClick={() => piece.setHum(!state.hum)}
-            title="The low hum of the main cord, heard while a hand moves or a reading runs: on or off"
+            className={'btn' + (state.drone ? ' btn-on' : '')}
+            aria-pressed={state.drone}
+            onClick={() => piece.setDrone(!state.drone)}
+            title="The low drone of the main cord, heard while a hand moves or a reading runs: on or off"
           >
-            hum
+            drone
           </button>
           <button
             className={'btn' + (state.clicks ? ' btn-on' : '')}

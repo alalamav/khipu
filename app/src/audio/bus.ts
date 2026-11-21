@@ -22,12 +22,12 @@
  * A cord landing takes a door of its own, to a third echo that takes half as long again to come
  * back and whose band settles downward a little: three of the knots' echoes to two of the cords'.
  *
- * The hum comes in by a third door, `under`, and gives way to the voices: the level of what
- * arrives at `input` is followed, and the hum is turned down a little while they sound.
+ * The drone comes in by a third door, `under`, and gives way to the voices: the level of what
+ * arrives at `input` is followed, and the drone is turned down a little while they sound.
  *
  *   input -> rectify -> smooth -> how far down -+
  *                                               v (gain)
- *   hum ------------------------------------> under -+-> compressor
+ *   drone ------------------------------------> under -+-> compressor
  *                                                    +-> room
  *
  * A Bus builds its nodes in whatever Tone context is current, so the same
@@ -70,8 +70,8 @@ const LANDING_TURNS = 1.5;
 const LANDING_BAND_TO = 500;
 
 /**
- * How far the hum gives way to the voices. The level at `input` is followed (rectified, then
- * smoothed by a low-pass at DUCK_SMOOTH Hz), and the hum's gain is 1 - DUCK_DEPTH * tanh(DUCK_SENSE * level):
+ * How far the drone gives way to the voices. The level at `input` is followed (rectified, then
+ * smoothed by a low-pass at DUCK_SMOOTH Hz), and the drone's gain is 1 - DUCK_DEPTH * tanh(DUCK_SENSE * level):
  * about 2 dB down under one cord, and never more than 5 dB.
  */
 const DUCK_DEPTH = 0.45;
@@ -103,7 +103,7 @@ function clampPan(pan: number): number {
 export class Bus {
   /** Voices connect here. */
   readonly input: Tone.Gain;
-  /** The hum connects here: it is heard under the voices, and gives way to them a little. */
+  /** The drone connects here: it is heard under the voices, and gives way to them a little. */
   readonly under: Tone.Gain;
   /** A very short smooth pulse: what strikes the resonators. Its samples add up to 1. */
   readonly pulse: Tone.ToneAudioBuffer;
@@ -163,12 +163,12 @@ export class Bus {
     this.wet = new Tone.Gain(room);
     this.input.chain(this.room, this.wet, this.compressor);
 
-    // The hum, turned down by what the voices are doing. The curves have a middle sample, so that
+    // The drone, turned down by what the voices are doing. The curves have a middle sample, so that
     // silence at `input` is exactly no change.
     this.under = new Tone.Gain(1);
     this.under.fan(this.compressor, this.room);
     this.rectify = new Tone.WaveShaper((x) => Math.abs(x), 1025);
-    // (a low-pass's Q is in dB: -6 is critically damped, so the hum's level does not overshoot)
+    // (a low-pass's Q is in dB: -6 is critically damped, so the drone's level does not overshoot)
     this.smooth = new Tone.BiquadFilter({ type: 'lowpass', frequency: DUCK_SMOOTH, Q: -6 });
     this.duck = new Tone.WaveShaper((x) => -DUCK_DEPTH * Math.tanh(DUCK_SENSE * Math.max(0, x)), 1025);
     // (Tone sets a parameter to nothing when one of its signal operators is connected to it, and a

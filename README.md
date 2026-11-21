@@ -117,7 +117,7 @@ app/
       resonatorPatch.ts    resonator voice: the mapping (pure)
       ResonatorVoice.ts    resonator voice: plays a patch with band-pass filters
       bus.ts               compressor, room, limiter; shared noises
-      AudioEngine.ts       chooses the voice; hum, grains, landings, snaps
+      AudioEngine.ts       chooses the voice; drone, grains, landings, snaps
     stage/               the khipu in space, on three.js
       RopeSim.ts           cords as ropes: swinging, falling, folding, piling up
       Stage.ts             scene, camera, what is drawn

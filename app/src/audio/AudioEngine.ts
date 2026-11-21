@@ -3,7 +3,7 @@
  *
  * Built on Tone.js. It owns the output bus, decides which voice sounds a
  * touched cord, and makes the sounds that are not cords: grains landing, cords
- * parting, and the hum of the main cord.
+ * parting, and the drone of the main cord.
  *
  * Three voices read the same row three ways:
  *
@@ -46,21 +46,21 @@ export interface PluckOptions {
 const MAX_VOICES: Readonly<Record<VoiceKind, number>> = { string: 60, operator: 32, resonator: 28 };
 const CACHE_SIZE = 96;
 
-/** The floor answers a grain at one of these multiples of the main cord's hum: the darker the cord, the lower. */
+/** The floor answers a grain at one of these multiples of the main cord's drone: the darker the cord, the lower. */
 const FLOOR_HARMONICS = [3, 4, 5, 6, 8, 10, 12] as const;
-/** The floor's echo comes back after this many turns of the hum: 0.19 to 0.38 s. */
+/** The floor's echo comes back after this many turns of the drone: 0.19 to 0.38 s. */
 const ECHO_TURNS = 16;
-/** The hum of a main cord that was never measured, in Hz. */
-const DEFAULT_HUM = 55;
+/** The drone of a main cord that was never measured, in Hz. */
+const DEFAULT_DRONE = 55;
 
-/** The level of the hum. */
-const HUM_LEVEL = 0.085;
+/** The level of the drone. */
+const DRONE_LEVEL = 0.085;
 /**
- * The hum comes up while the khipu is being attended to and goes down when it is left alone.
+ * The drone comes up while the khipu is being attended to and goes down when it is left alone.
  * Time constants, in seconds: it is nearly all there after three of them (3.6 s up, 7.5 s down).
  */
-const HUM_ATTACK = 1.2;
-const HUM_RELEASE = 2.5;
+const DRONE_ATTACK = 1.2;
+const DRONE_RELEASE = 2.5;
 
 /** Landings that arrive together are heard one after another, this far apart, in seconds… */
 const LANDING_GAP = { first: 0.03, rest: 0.014 } as const;
@@ -68,13 +68,13 @@ const LANDING_GAP = { first: 0.03, rest: 0.014 } as const;
 const LANDING_WAIT = { first: 0.5, rest: 0.25 } as const;
 /**
  * After the thud, a scatter of grains: this many short knocks, each softer than the last by LANDING_GRAIN_FADE,
- * at one of these multiples of the thud's pitch (all harmonics of the hum still), at uneven moments spread
+ * at one of these multiples of the thud's pitch (all harmonics of the drone still), at uneven moments spread
  * over one turn of the landing's echo, and to either side of where the cord fell. 0 for none.
  */
 const LANDING_GRAINS = 4;
 const LANDING_GRAIN_FADE = 0.6;
 const LANDING_GRAIN_PITCHES = [1, 2, 3, 4] as const;
-/** The landing's echo comes back after this many turns of the hum (the floor's own, ECHO_TURNS, times the bus's 1.5). */
+/** The landing's echo comes back after this many turns of the drone (the floor's own, ECHO_TURNS, times the bus's 1.5). */
 const LANDING_ECHO_TURNS = 24;
 
 interface Drone {
@@ -92,9 +92,9 @@ export class AudioEngine {
   voices = 0;
   /** Knocks of cords landing heard so far. */
   landings = 0;
-  /** The hum is up: the khipu is being attended to. */
-  get humming(): boolean {
-    return this.humActive;
+  /** The drone is up: the khipu is being attended to. */
+  get droning(): boolean {
+    return this.droneActive;
   }
 
   private bus: Bus | null = null;
@@ -104,14 +104,14 @@ export class AudioEngine {
   /** When the next landing may be heard, in audio time. */
   private landingFree = 0;
   private drone: Drone | null = null;
-  /** Length of the main cord the hum is for; null is silence; undefined is "nothing asked yet". */
+  /** Length of the main cord the drone is for; null is silence; undefined is "nothing asked yet". */
   private droneLength: number | null | undefined = undefined;
-  /** The pitch of the hum, in Hz. The floor is tuned to it. */
-  private hum = DEFAULT_HUM;
-  /** The hum is heard. Silenced, it still tunes the floor and times its echo. */
-  private humOn = true;
-  /** The khipu is being attended to (a hand moving, or a reading): the hum is up. */
-  private humActive = false;
+  /** The pitch of the drone, in Hz. The floor is tuned to it. */
+  private dronePitch = DEFAULT_DRONE;
+  /** The drone is heard. Silenced, it still tunes the floor and times its echo. */
+  private droneOn = true;
+  /** The khipu is being attended to (a hand moving, or a reading): the drone is up. */
+  private droneActive = false;
   /** How much of the khipu has gone, 0 to 1. */
   private erosion = 0;
   /** The snap of a cord parting and the crack of a torn or cut cord are heard. */
@@ -224,11 +224,11 @@ export class AudioEngine {
     if (now - this.lastTick < 0.035) return;
     this.lastTick = now;
     const light = Number.isFinite(brightness) ? Math.max(0, Math.min(1, brightness)) : 0.5;
-    // The floor knocks, at a harmonic of the hum; and a little dust, lower and slower than a click.
+    // The floor knocks, at a harmonic of the drone; and a little dust, lower and slower than a click.
     const step = Math.floor((0.7 * light + 0.3 * Math.random()) * FLOOR_HARMONICS.length);
     const harmonic = FLOOR_HARMONICS[Math.min(FLOOR_HARMONICS.length - 1, step)];
     const door = bus.floorDoor(rising);
-    bus.tok(now, this.hum * harmonic, 0.028, 0.06, pan, door);
+    bus.tok(now, this.dronePitch * harmonic, 0.028, 0.06, pan, door);
     bus.burst(now, 700 + 1500 * light * Math.random(), 3, 0.03, 0.05, pan, Math.random() * 0.4, 0.004, door);
   }
 
@@ -262,16 +262,16 @@ export class AudioEngine {
 
     const light = Number.isFinite(brightness) ? Math.max(0, Math.min(1, brightness)) : 0.5;
     const hard = 0.35 + 0.65 * Math.max(0, Math.min(1, force || 0));
-    const frequency = this.hum * landingHarmonic(lengthCm, light, this.hum);
+    const frequency = this.dronePitch * landingHarmonic(lengthCm, light, this.dronePitch);
     // Cords have an echo of their own, slower than the one the knots' grains go to.
     const door = bus.landingDoor();
     if (first) {
-      // The thud: the cord's knock, the floor under it at the hum's own pitch, and the dust it raises.
+      // The thud: the cord's knock, the floor under it at the drone's own pitch, and the dust it raises.
       bus.tok(time, frequency, 0.07, 0.16 * hard, pan, door);
-      bus.tok(time, this.hum, 0.09, 0.12 * hard, pan, door);
+      bus.tok(time, this.dronePitch, 0.09, 0.12 * hard, pan, door);
       bus.burst(time, 350 + 450 * light, 1.2, 0.08 * hard, 0.13, pan, Math.random() * 0.4, 0.006, door);
       // And what the thud throws up: a few grains of it, higher, scattered in time and to either side.
-      const turn = LANDING_ECHO_TURNS / this.hum;
+      const turn = LANDING_ECHO_TURNS / this.dronePitch;
       let level = 0.09 * hard;
       for (let k = 0; k < LANDING_GRAINS; k++) {
         const at = time + (turn * (k + 0.35 + 0.65 * Math.random())) / LANDING_GRAINS;
@@ -293,11 +293,11 @@ export class AudioEngine {
     const now = bus.now;
     const door = bus.floorDoor(rising);
     bus.burst(now, 500 + Math.random() * 400, 1, 0.3, 0.14, pan, Math.random() * 0.3, 0.005, door);
-    bus.tok(now, this.hum * 2, 0.06, 0.1, pan, door);
+    bus.tok(now, this.dronePitch * 2, 0.06, 0.1, pan, door);
   }
 
   /**
-   * The main cord: a low hum that is there as long as the khipu is.
+   * The main cord: a low drone that is there as long as the khipu is.
    * Pass its length in cm (0 if it was never measured), or null for silence.
    */
   setDrone(lengthCm: number | null): void {
@@ -312,14 +312,14 @@ export class AudioEngine {
   }
 
   /**
-   * The khipu is being attended to, or it has been left alone. The hum comes up slowly in the first
+   * The khipu is being attended to, or it has been left alone. The drone comes up slowly in the first
    * case and goes down more slowly in the second.
    */
-  setHumActive(active: boolean): void {
-    if (active === this.humActive) return;
-    this.humActive = active;
+  setDroneActive(active: boolean): void {
+    if (active === this.droneActive) return;
+    this.droneActive = active;
     if (this.bus && this.drone) {
-      this.drone.presence.gain.setTargetAtTime(active ? 1 : 0, this.bus.now, active ? HUM_ATTACK : HUM_RELEASE);
+      this.drone.presence.gain.setTargetAtTime(active ? 1 : 0, this.bus.now, active ? DRONE_ATTACK : DRONE_RELEASE);
     }
   }
 
@@ -333,9 +333,9 @@ export class AudioEngine {
     if (this.bus) this.bus.breaths = on;
   }
 
-  /** Let the hum be heard, or silence it. */
-  setHum(on: boolean): void {
-    this.humOn = on;
+  /** Let the drone be heard, or silence it. */
+  setDroneOn(on: boolean): void {
+    this.droneOn = on;
     if (this.bus && this.drone) this.drone.out.gain.setTargetAtTime(on ? 1 : 0, this.bus.now, 0.3);
   }
 
@@ -351,22 +351,22 @@ export class AudioEngine {
     }
     if (lengthCm === null) return;
 
-    let f = lengthCm > 0 ? PITCH_K / lengthCm : DEFAULT_HUM; // an unmeasured main cord hums at a default
+    let f = lengthCm > 0 ? PITCH_K / lengthCm : DEFAULT_DRONE; // an unmeasured main cord drones at a default
     while (f < 42) f *= 2;
     while (f > 84) f /= 2;
-    this.hum = f;
+    this.dronePitch = f;
     bus.setEchoTime(ECHO_TURNS / f);
     const o1 = new Tone.ToneOscillatorNode({ frequency: f, type: 'triangle' });
     const o2 = new Tone.ToneOscillatorNode({ frequency: f * 1.5 + 0.3, type: 'sine' });
     const lfo = new Tone.ToneOscillatorNode({ frequency: 0.07, type: 'sine' });
     const sway = new Tone.Gain(0.02);
     const lowpass = new Tone.BiquadFilter({ type: 'lowpass', frequency: 320 });
-    const level = new Tone.Gain(HUM_LEVEL);
+    const level = new Tone.Gain(DRONE_LEVEL);
     // Whether it is there and whether it is switched on come after the level, which sways: a swaying
     // level turned to nothing would still be heard.
     const presence = new Tone.Gain(0);
-    if (this.humActive) presence.gain.setTargetAtTime(1, t, HUM_ATTACK);
-    const out = new Tone.Gain(this.humOn ? 1 : 0);
+    if (this.droneActive) presence.gain.setTargetAtTime(1, t, DRONE_ATTACK);
+    const out = new Tone.Gain(this.droneOn ? 1 : 0);
     lfo.connect(sway);
     sway.connect(level.gain);
     o1.connect(lowpass);
