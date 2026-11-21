@@ -393,12 +393,56 @@ async function levelTests(): Promise<void> {
   }
 }
 
+/**
+ * The hum's door: what comes in at `under` gives way while something sounds at `input`, and comes back.
+ * A steady 3 kHz tone stands for the hum, and a second of a 200 Hz tone for a cord. The same is rendered
+ * with the steady tone at `input`, where nothing gives way, so that what the compressor does is left out.
+ */
+async function humTests(): Promise<void> {
+  say('\nTHE HUM, under the voices\n');
+
+  const probe = 3000;
+  const voice = 0.12;
+  const at = async (door: 'under' | 'input'): Promise<number[]> => {
+    const stereo = await render(4, 0, (bus) => {
+      const steady = new Tone.ToneOscillatorNode({ frequency: probe, type: 'sine' });
+      const steadyLevel = new Tone.Gain(0.05);
+      steady.chain(steadyLevel, bus[door]);
+      steady.start(0);
+      const cord = new Tone.ToneOscillatorNode({ frequency: 200, type: 'sine' });
+      const cordLevel = new Tone.Gain(voice);
+      cord.chain(cordLevel, bus.input);
+      cord.start(1);
+      cord.stop(2);
+    });
+    const x = mono(stereo);
+    // before the cord, while it sounds, and well after it
+    return [0.4, 1.5, 3.5].map((start) => {
+      const line = linesOf(x, start, 8192).find((l) => Math.abs(l.hz - probe) < 20);
+      return line ? line.level : 0;
+    });
+  };
+  const under = await at('under');
+  const plain = await at('input');
+  const [before, during, after] = under.map((level, i) => db(level / plain[i]));
+  // a sine of amplitude a is 2a/pi once rectified and smoothed
+  const expected = db(1 - 0.45 * Math.tanh((6 * 2 * voice) / Math.PI));
+  check(Math.abs(before) < 0.1, 'in silence the hum is not turned down', `${before.toFixed(2)} dB`);
+  check(
+    Math.abs(during - expected) < 0.4,
+    'while a cord sounds the hum gives way a little',
+    `${during.toFixed(2)} dB under a tone at ${fmtDb(voice)}; the curve says ${expected.toFixed(2)} dB`,
+  );
+  check(Math.abs(after) < 0.1, 'and it comes back when the cord is over', `${after.toFixed(2)} dB, 1.5 s after`);
+}
+
 async function run(): Promise<void> {
   out.textContent = '';
   say(`Just Ends: sound self-test, rendered offline at ${SR} Hz\n`);
   try {
     await operatorTests();
     await resonatorTests();
+    await humTests();
     await levelTests();
     say(`\n${passed} passed, ${failed} failed`);
   } catch (error) {

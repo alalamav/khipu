@@ -189,6 +189,30 @@ describe('a rope that is let go', () => {
   });
 });
 
+describe('a rope reaching the floor', () => {
+  it('is reported once for each of its points, the end first, at about the speed of its fall', () => {
+    const s = sim();
+    const rope = s.add(hanging(40, 30, 10));
+    const heard: { point: number; speed: number; landed: number }[] = [];
+    s.onTouchdown = (r, point, speed) => {
+      expect(r).toBe(rope);
+      heard.push({ point, speed, landed: r.landed });
+    };
+    run(s, 1);
+    expect(heard).toHaveLength(0); // hanging, it touches nothing
+    s.release(rope, 6);
+    run(s, 8);
+    expect(rope.settled).toBe(true);
+    // every point, and none of them twice
+    expect(heard.map((h) => h.point).sort((a, b) => a - b)).toEqual([...Array(rope.n).keys()]);
+    expect(heard.map((h) => h.landed)).toEqual(heard.map((_, i) => i + 1));
+    expect(heard[0].point).toBe(rope.n - 1);
+    // its end had 40 cm to fall: sqrt(2 g h) is 89 cm/s
+    expect(heard[0].speed).toBeGreaterThan(60);
+    expect(heard[0].speed).toBeLessThan(100);
+  });
+});
+
 describe('cutting a rope', () => {
   it('keeps the upper part hanging and lets the rest fall, with nothing lost', () => {
     const s = sim();

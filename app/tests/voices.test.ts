@@ -5,7 +5,7 @@
  */
 import { describe, expect, it } from 'vitest';
 import { breathCurve, breathEnvelope } from '../src/audio/breath';
-import { cordFrequency, ringTime, soundOf, type CordSound } from '../src/audio/cordSound';
+import { cordFrequency, landingHarmonic, ringTime, soundOf, type CordSound } from '../src/audio/cordSound';
 import { endingOf } from '../src/audio/endings';
 import { MAX_MODULATORS, buildOperatorPatch, operatorsOf } from '../src/audio/operatorPatch';
 import { MAX_RESONANCES, buildResonatorPatch, valueFrequency } from '../src/audio/resonatorPatch';
@@ -359,5 +359,36 @@ describe('resonator voice: the cord as its numbers', () => {
       [1, 1, 2, null],
       [20, 2, 1, null],
     ]);
+  });
+});
+
+describe('a cord landing', () => {
+  it('knocks at a harmonic of the hum, from the sixth to the twelfth, whatever the cord and the hum', () => {
+    for (const hum of [42, 55, 83.5]) {
+      for (let cm = 0.5; cm < 420; cm *= 1.07) {
+        const h = landingHarmonic(cm, 0.5, hum);
+        expect(Number.isInteger(h)).toBe(true);
+        expect(h).toBeGreaterThanOrEqual(6);
+        expect(h).toBeLessThanOrEqual(12);
+      }
+    }
+  });
+
+  it('keeps the pitch of the cord, by octaves', () => {
+    // a 30 cm cord is 220 Hz: its octave is the eighth harmonic of a 55 Hz hum
+    expect(landingHarmonic(30, 0.5, 55)).toBe(8);
+    // a 15 cm cord is the octave above, and lands on the same harmonic
+    expect(landingHarmonic(15, 0.5, 55)).toBe(8);
+    // a 40 cm cord is 165 Hz: the sixth
+    expect(landingHarmonic(40, 0.5, 55)).toBe(6);
+    // a piece that broke off is shorter than the cord was, and lands higher: 24 cm is 275 Hz, the tenth
+    expect(landingHarmonic(24, 0.5, 55)).toBe(10);
+  });
+
+  it('lands lower the darker it is, when the cord was never measured', () => {
+    expect(landingHarmonic(null, 0, 55)).toBe(6);
+    expect(landingHarmonic(null, 0.5, 55)).toBe(9);
+    expect(landingHarmonic(null, 1, 55)).toBe(11);
+    expect(landingHarmonic(0, 0.2, 55)).toBe(7);
   });
 });

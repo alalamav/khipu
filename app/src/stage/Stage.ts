@@ -118,6 +118,12 @@ const GRAIN = 11;
 export class Stage implements WearListener {
   /** Called when a fallen grain reaches the bed: where (-1 left to 1 right), how light the cord was, and which cord. */
   onGrainLanded: ((pan: number, lightness: number, cordIndex: number) => void) | null = null;
+  /**
+   * Called as a fallen cord reaches the bed, once for each point of its rope: where (-1 left to 1 right),
+   * which cord, how long the piece that fell is (cm, as drawn), how hard it came down (0 to 1, where 1 is
+   * a fall from the top of the khipu), and whether this is the first of it to arrive.
+   */
+  onCordLanded: ((pan: number, cordIndex: number, length: number, force: number, first: boolean) => void) | null = null;
 
   private readonly renderer: WebGLRenderer;
   private readonly scene = new Scene();
@@ -224,6 +230,12 @@ export class Stage implements WearListener {
     this.sim.onSettle = (rope) => {
       this.debris.push(rope);
       this.fallenDirty = true;
+    };
+    this.sim.onTouchdown = (rope, point, speed) => {
+      if (!this.onCordLanded || rope.tag < 0) return;
+      // the speed of something dropped from the main cord to the floor
+      const full = Math.sqrt(2 * this.sim.gravity * Math.max(1, this.topY - this.floorY));
+      this.onCordLanded((rope.p[3 * point] / this.width) * 1.4 - 0.7, rope.tag, rope.length, clamp(speed / full, 0, 1), rope.landed === 1);
     };
 
     // Build every shader now, while nothing is moving, instead of at the first reading, the first

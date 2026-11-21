@@ -1,5 +1,9 @@
 import type { ReactNode } from 'react';
+import { SHOWN_VOICES } from '../audio/cordSound';
 import type { ArchiveStats } from '../khipu';
+
+/** The string voice is offered. While it is hidden, so is what is said of it here. */
+const stringShown = SHOWN_VOICES.includes('string');
 import { Sheet, SheetHead, Stat } from './bits';
 
 function Heading({ children }: { children: ReactNode }) {
@@ -52,8 +56,10 @@ export function About({ stats, onClose }: { stats: ArchiveStats | null; onClose:
         <SheetHead title="About this instrument" onClose={onClose} />
 
         <P>
-          The instrument has three voices. Each reads the same row of the database a different way: as measurements, as
-          relationships, as numbers. Choose one in the bar at the bottom; under the cord’s row, the ledger shows what that
+          {stringShown
+            ? 'The instrument has three voices. Each reads the same row of the database a different way: as measurements, as relationships, as numbers.'
+            : 'The instrument has two voices. Each reads the same row of the database a different way: as relationships, and as numbers.'}{' '}
+          Choose one in the bar at the bottom; under the cord’s row, the ledger shows what that
           voice makes of the cord under your hand.
         </P>
 
@@ -84,13 +90,13 @@ export function About({ stats, onClose }: { stats: ArchiveStats | null; onClose:
             ],
             [
               'a length that was not recorded',
-              'no pitch. In the string and operator voices the cord is only breath. In the resonator voice its knots still ring, at moments nothing in the record decides.',
+              `no pitch. In the ${stringShown ? 'string and operator voices' : 'operator voice'} the cord is only breath. In the resonator voice its knots still ring, at moments nothing in the record decides.`,
             ],
           ]}
         />
 
-        <Heading>String: the row as measurements</Heading>
-        <Mapping
+        {stringShown && <Heading>String: the row as measurements</Heading>}
+        {stringShown && <Mapping
           rows={[
             [
               'cord length, in centimetres',
@@ -113,11 +119,12 @@ export function About({ stats, onClose }: { stats: ArchiveStats | null; onClose:
               'left or right. Where direction was not recorded the knot sits in the middle and is partly noise.',
             ],
           ]}
-        />
+        />}
 
         <Heading>Operator: the row as relationships</Heading>
         <P>
-          Every cord is a sine-wave operator, as in FM synthesis. The cord you touch is the carrier, at the pitch of its length.
+          Every cord is a sine-wave operator, as in FM synthesis. The cord you touch is the carrier, at the pitch of its length
+          {stringShown ? '' : ' (6600 ÷ cm gives hertz, so a 30 cm cord sounds 220 Hz, moved by octaves into 65 to 1568 Hz)'}.
           The cords related to it are not heard in that tone: they bend it. (Its subsidiaries are then touched in their turn, as
           in every voice, and each is for a moment a carrier of its own.)
         </P>

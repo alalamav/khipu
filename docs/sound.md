@@ -4,6 +4,9 @@
 
 Nothing in the prototype is sampled and no musical scale is applied. Every sound is computed, at the moment a cord is touched, from that cord's row in the Open Khipu Repository (`khipu.db`) and from what is still hanging of it.
 
+> [!NOTE]
+> The string voice is hidden from the interface for now: the voice control offers operator and resonator, and the piece starts in the operator voice. Nothing of it was removed. A link can still ask for it (`?voice=string`), and adding `'string'` to `SHOWN_VOICES` in [`cordSound.ts`](../app/src/audio/cordSound.ts) shows it again, with its section of the About sheet.
+
 There are three voices. Each takes a different layer of the same tables to be the sound:
 
 | Voice | Layer of the database | Columns that decide the pitch | Algorithm |
@@ -244,6 +247,8 @@ Breath is pink noise through a band-pass filter. It comes up slowly (0.15 to 0.3
 | Termination not recorded | Every voice: breath for as long as the sound lasts (0.6 of the ring), centred an octave above the cord, at a level of 0.3, over a faint cord |
 | The cord is worn | Every voice: breath for as long as the sound lasts, centred at 1200 Hz, at a level of 0.28 × (1 − integrity). On a cord that stops (broken, cut, unfinished) it goes when the cord does |
 
+**Breath can be switched off** (the **breath** control). What it stood for is then silence, and nothing else changes: a cord with no recorded length makes no sound of its own in the string and operator voices (its knots still tick in the string voice), a cord with no recorded termination is only the faint cord, and a worn cord carries no noise for its wear. The ledger still says "only breath" of a cord with no length.
+
 **No two cords breathe quite alike.** From the cord's seed, each breath is given its own centre (0.88 to 1.14 of the above), band width (Q 0.9 to 1.6), rise, length (0.85 to 1 of the above) and, in the live voices, its own place in the noise. The same cord in the same state always breathes the same way. This variation is ours, not the archive's.
 
 Breath used to be white noise under a low-pass, about a second long, peaking a quarter of the way in, and every breath in the live voices was the same stretch of noise. For the same level it is about as loud as it was (measured at 1000 Hz); the levels were lowered from 0.55, 0.4 and 0.35.
@@ -281,6 +286,9 @@ flowchart LR
   V["voices"] --> IN["input"]
   IN --> C["compressor: -16 dB, 4 to 1"]
   IN --> R["room: 3.2 s"] --> W["wet: 0.32"] --> C
+  IN -.->|"level"| U["under: the hum, turned down by the voices"]
+  U --> C
+  U --> R
   C --> L["limiter: -3 dB, 20 to 1"] --> T["trim"] --> M["volume"] --> O(["out"])
 ```
 
@@ -559,12 +567,23 @@ Each knot cluster that falls takes its resonance with it: the chord thins, one n
 
 | Sound | When | From the row | How it is made |
 |---|---|---|---|
-| **Hum** | As long as a khipu with cords is on stage, unless the **hum** control is off | `primary_cord.PCORD_LENGTH` | `6600 / cm` again, but moved by octaves into 42 to 84 Hz. A triangle wave with a sine a fifth above it, low-passed at 320 Hz, swelling very slowly. 55 Hz if the main cord was never measured |
+| **Hum** | While the khipu is attended to: the pointer is moving, anywhere in the window, or a reading is running. Never if the **hum** control is off | `primary_cord.PCORD_LENGTH` | `6600 / cm` again, but moved by octaves into 42 to 84 Hz. A triangle wave with a sine a fifth above it, low-passed at 320 Hz, swelling very slowly. 55 Hz if the main cord was never measured |
+| **Landing** | Each point of a fallen cord's rope reaching the bed, the first time it does | the length of the piece that fell; the cord's lightness; the main cord's length | A run of knocks, so a long cord takes longer to land than a stub. The first to arrive is a thud: a knock at the cord's harmonic (below), another at the hum's own pitch, 130 ms of dust, and a scatter of four grains after it. The rest are a patter: shorter, softer knocks at the same harmonic, one in four an octave up. Louder the faster it came down. Placed where it lands |
 | **Grain** | Each fragment of a fallen knot landing on the bed | the cord's lightness; the main cord's length | A knock: one resonance struck by a pulse, at 3 to 12 times the hum (lower for dark cords), dying in about 0.2 s. Under it, 50 ms of soft noise between 700 and 2200 Hz. Placed where it lands |
 | **Snap** | A cord parting or coming away, unless the **clicks** control is off | where the cord hangs | 140 ms of band-passed noise around 500 to 900 Hz that comes up over 5 ms, and a knock an octave above the hum |
 | **Crack** | Inside the sound of a broken or cut cord, unless the **clicks** control is off | `TERMINATION` | 80 ms of noise low-passed at 2600 Hz, up over 2 ms and down with a 12 ms decay. With clicks off the cord stops just the same, silently |
 
-**The floor.** Grains and snaps are heard from further off than cords: less of them directly, more from the room (30 ms late and low-passed at 2400 Hz), and repeated by an echo.
+**The hum comes and goes.** It is up while a hand is on the khipu or a reading runs, and down when the khipu is left alone. It holds for 2 s after the pointer last moved, then goes down with a time constant of 2.5 s (nearly gone after 7.5 s). It comes up with a time constant of 1.2 s (nearly all there after 3.6 s). Silent or not, it still tunes the floor and times its echo.
+
+**The hum gives way to the cords.** The level of the voices is followed (rectified, then smoothed by a 6 Hz low-pass), and the hum is turned down by `1 − 0.45 × tanh(6 × level)`: about 2 dB under one cord, 5 dB at the most, and back within a few tenths of a second. Only the voices do this. The floor's sounds do not.
+
+**Where a cord lands.** The cord's pitch, `6600 / cm` of the piece that fell, is moved by octaves to between 6 and 12 times the hum and then to the nearest harmonic: 252 to 1008 Hz. (It was an octave lower at first, and was hard to hear beside the knots.) A 30 cm cord over a 55 Hz hum lands on the eighth harmonic, 440 Hz. A piece that broke off is shorter than its cord and lands higher. A cord that was never measured has no pitch: it lands on the sixth to the eleventh harmonic, the darker the lower. Landings that arrive in the same instant are heard one after another (30 ms apart for thuds, 14 ms for the patter), and one that would have to wait more than 0.5 s (0.25 s for the patter) is not heard.
+
+**What a thud throws up.** After each thud come four grains of it: short knocks at 1, 2, 3 or 4 times the thud's pitch (drawn by lot, and still harmonics of the hum), each 0.6 as loud as the one before, at uneven moments spread over one turn of the landing's echo, and up to 0.35 to either side of where the cord fell. This stands in for a grain delay: the grains are made again, not cut from the sound.
+
+**Cords have an echo of their own.** A landing does not go to the two echoes of the knots but to a third, which takes half as long again to come back: 24 periods of the hum, 0.29 to 0.57 s, so three repeats of a knot's echo take as long as two of a cord's. Its band moves from 800 Hz down to 500 Hz over seven repeats. It wears as the other two do.
+
+**The floor.** Grains, landings and snaps are heard from further off than cords: less of them directly, more from the room (30 ms late and low-passed at 2400 Hz), and repeated by an echo.
 
 - **Echo time:** sixteen periods of the hum, so 0.19 to 0.38 s, set by the main cord's length.
 - **The band:** each time round, an echo passes a band-pass filter (Q 0.9) that is moving from 800 Hz, either up to 3200 Hz or down to 200 Hz, over seven repeats. There are two echoes, one for each direction; which one a cord's grains and snaps go to is drawn by lot when the khipu is tied. This is ours, not the archive's.
@@ -611,6 +630,7 @@ The operator and resonator voices are built from Web Audio nodes, so they cannot
 | A cord with no knots only taps | Silence (−240 dB) from 0.3 s on |
 | The three voices are about equally loud | Operator −2.3 dB and resonator −1.6 dB against the string voice (rms, twelve cords of KH0279) |
 | The output cannot clip | With the most cords allowed sounding at once: string −1.9 dB, operator −2.2 dB, resonator −3.5 dB below full scale |
+| The hum gives way to the voices, and comes back (measured after the hum was changed) | Under a steady tone at −18.4 dB the hum is 1.86 dB down, as its curve says; 0.00 dB in silence and 1.5 s after the tone |
 | Sounds are released when they end | After a pause, the count of sounding voices returns to 0 in all three voices |
 
 What is covered by unit tests under Node (`app/tests`):
@@ -629,7 +649,8 @@ Two faults were found by measuring and are fixed:
 
 ## 10. Known limits and open questions
 
-- **The measurements of section 9 are older than the sound.** They were taken before the floor's knocks and echoes, the softer cracks, and the ring times that match the swing (and the larger numbers of sounds at once that go with them). `selftest.html` has not been run since.
+- **The measurements of section 9 are older than the sound.** They were taken before the floor's knocks, landings and echoes, the hum that comes and goes and gives way, the softer cracks, and the ring times that match the swing (and the larger numbers of sounds at once that go with them). `selftest.html` has not been run since.
+- **One self-test fails.** Run again after the hum was changed, `selftest.html` passes 15 checks and fails one: at ring 1 the resonator's 271 Hz line is measured to fall 60 dB in 0.67 s where 6.90 s was asked (at ring 0.5 it is 3.43 s for 3.45 s). The resonator was not touched by that change, so this probably dates from the longer ring times; whether the fault is in the filter or in the test has not been looked into.
 - **Nobody has listened to it critically.** The levels of knots against cords, the depth of modulation, the base pitches and the room are set by reasoning and measurement, and are the first things to change by ear. It has been run in Chrome only.
 - **The string voice is computed on the main thread.** A cord takes 1.7 ms at the median and up to about 20 ms, which can cost a frame of animation now and then. The other two voices cost almost nothing to set up.
 - **The string voice's pitch is quantised** by its delay line (the note in section 4).
@@ -657,8 +678,11 @@ Each mapping is in one place, and the two patch builders are pure functions that
 | The number-to-pitch scale, strikes, panning of knots, the sharing of the filters | [`resonatorPatch.ts`](../app/src/audio/resonatorPatch.ts) |
 | The filters and the strike | [`ResonatorVoice.ts`](../app/src/audio/ResonatorVoice.ts) |
 | Breath: its noise, band, envelope and variation | [`breath.ts`](../app/src/audio/breath.ts); its levels and centres in `endings.ts` and `stringVoice.ts` |
-| Room, compressor, limiter, crack; the floor and its echoes | [`bus.ts`](../app/src/audio/bus.ts) |
-| Hum, grains, snaps; how many sounds at once | [`AudioEngine.ts`](../app/src/audio/AudioEngine.ts) |
+| Room, compressor, limiter, crack; the floor and its echoes; how far the hum gives way to the voices | [`bus.ts`](../app/src/audio/bus.ts) |
+| Hum and how slowly it comes and goes, grains, landings, snaps; how many sounds at once | [`AudioEngine.ts`](../app/src/audio/AudioEngine.ts) |
+| Which harmonic a cord lands on | `landingHarmonic` in [`cordSound.ts`](../app/src/audio/cordSound.ts) |
+| How long the hum holds after the pointer stops | `HUM_HOLD_MS` in [`Piece.ts`](../app/src/piece/Piece.ts) |
+| When a rope is said to have touched the floor | `onTouchdown` in [`RopeSim.ts`](../app/src/stage/RopeSim.ts) |
 | What the ledger prints for each voice | [`views.ts`](../app/src/piece/views.ts) |
 | The wear rule | [`HangingKhipu.ts`](../app/src/khipu/HangingKhipu.ts) |
 | Which database columns reach the app | [`build_data.py`](../tools/build_data.py) and [`schema.ts`](../app/src/khipu/schema.ts), together |

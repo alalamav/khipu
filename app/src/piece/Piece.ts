@@ -29,6 +29,8 @@ export type Overlay = 'intro' | 'catalogue' | 'about' | null;
 
 /** The longest ?ff= that is honoured, in seconds of reading. */
 const MAX_FAST_FORWARD = 3600;
+/** The hum stays up for this long after the pointer last moved, in milliseconds. Then it begins to go down. */
+const HUM_HOLD_MS = 2000;
 /** Milliseconds of a frame that a fast-forward may take. The rest is left for drawing and for the visitor. */
 const FORWARD_SLICE_MS = 40;
 
@@ -51,6 +53,8 @@ export interface PieceState {
   hum: boolean;
   /** The snap of a cord parting and the crack of a torn or cut cord are heard. */
   clicks: boolean;
+  /** Breath is heard: where a length or an ending was not recorded, and on worn cords. */
+  breath: boolean;
   voice: VoiceKind;
   /** Operator voice: modulation depth. */
   depth: number;
@@ -131,6 +135,8 @@ export class Piece {
   private wearAmount = 0.45;
   private silent = false;
   private lastSnap = 0;
+  /** When the pointer last moved, anywhere in the window (as `performance.now()` counts). */
+  private lastMoveAt = -Infinity;
   /** For each cord, drawn by lot when the khipu is tied: 1 if the echoes of what it drops climb, 0 if they sink. */
   private climbs = new Uint8Array(0);
   private lastPluck = new Float64Array(0);
@@ -176,6 +182,7 @@ export class Piece {
       volume: 0.8,
       hum: true,
       clicks: true,
+      breath: true,
       voice: this.audio.settings.kind,
       depth: this.audio.settings.depth,
       ring: this.audio.settings.ring,
@@ -295,6 +302,11 @@ export class Piece {
   setClicks(clicks: boolean): void {
     this.audio.setClicks(clicks);
     this.set({ clicks });
+  }
+
+  setBreath(breath: boolean): void {
+    this.audio.setBreath(breath);
+    this.set({ breath });
   }
 
   setVoice(voice: VoiceKind): void {
@@ -558,6 +570,8 @@ export class Piece {
 
       if (this.forward > 0) this.runForward();
       else this.step(dt, false);
+      // The hum is there while the khipu is attended to: a hand moving, or a reading that can be heard.
+      this.audio.setHumActive((this.reading && this.forward === 0) || performance.now() - this.lastMoveAt < HUM_HOLD_MS);
       this.stage?.render();
       this.flush();
     } catch (error) {
@@ -634,7 +648,7 @@ export class Piece {
 
   private debugLine(): string | null {
     if (!this.params.debug) return null;
-    return `audio ${this.audio.state}, ${this.audio.played} cords sounded, ${this.audio.voices} voices`;
+    return `audio ${this.audio.state}, ${this.audio.played} cords sounded, ${this.audio.voices} voices, ${this.audio.landings} landings, hum ${this.audio.humming ? 'up' : 'down'}`;
   }
 
   // ───────────────────────── the canvas ─────────────────────────
@@ -645,6 +659,13 @@ export class Piece {
     this.stage = stage;
     stage.onGrainLanded = (pan, lightness, cordIndex) => {
       if (!this.silent) this.audio.tick(pan, lightness, this.climbs[cordIndex] === 1);
+    };
+
+    stage.onCordLanded = (pan, cordIndex, length, force, first) => {
+      const cord = this.khipu?.cords[cordIndex];
+      if (this.silent || !cord) return;
+      // A cord that was never measured is drawn at a nominal length, which is not a pitch.
+      this.audio.land(pan, cord.length ? length : null, cord.lightness, force, first);
     };
 
     const size = () => stage.resize(window.innerWidth, window.innerHeight, Math.min(2, window.devicePixelRatio || 1));
@@ -751,6 +772,9 @@ export class Piece {
       this.viewChosen();
     };
     const refit = () => this.fit();
+    const stir = () => {
+      this.lastMoveAt = performance.now();
+    };
 
     canvas.addEventListener('pointerdown', down);
     canvas.addEventListener('pointermove', move);
@@ -761,6 +785,7 @@ export class Piece {
     canvas.addEventListener('wheel', wheel, { passive: false });
     canvas.addEventListener('dblclick', refit);
     window.addEventListener('resize', resize);
+    window.addEventListener('pointermove', stir, { passive: true });
 
     this.lastFrame = performance.now();
     this.frameRequest = requestAnimationFrame(this.frame);
@@ -776,6 +801,7 @@ export class Piece {
       canvas.removeEventListener('wheel', wheel);
       canvas.removeEventListener('dblclick', refit);
       window.removeEventListener('resize', resize);
+      window.removeEventListener('pointermove', stir);
       stage.dispose();
       if (this.stage === stage) this.stage = null;
     };

@@ -56,7 +56,8 @@ It has been run in Chrome only.
 - **wear** sets how much each touch costs. At zero nothing is lost.
 - **Re-tie** hangs the khipu again from its rows and tidies the floor: what had fallen is cleared away.
   (Between re-tyings the floor keeps up to 2,500 fallen cords; beyond that the oldest are cleared a few at a time.)
-- **voice** chooses string, operator or resonator. The operator voice has a
+- **voice** chooses operator or resonator. (The string voice is hidden from the interface for now, not removed:
+  `?voice=string` still starts in it, and `SHOWN_VOICES` in `cordSound.ts` brings it back.) The operator voice has a
   **depth** slider (0 is bare sine tones); the resonator has **ring** (how long the filters ring).
 - The ledger shows the row of the cord under the hand: what the archive says,
   what is left, and what the current voice makes of it, in all three voices.
@@ -116,7 +117,7 @@ app/
       resonatorPatch.ts    resonator voice: the mapping (pure)
       ResonatorVoice.ts    resonator voice: plays a patch with band-pass filters
       bus.ts               compressor, room, limiter; shared noises
-      AudioEngine.ts       chooses the voice; hum, grains, snaps
+      AudioEngine.ts       chooses the voice; hum, grains, landings, snaps
     stage/               the khipu in space, on three.js
       RopeSim.ts           cords as ropes: swinging, falling, folding, piling up
       Stage.ts             scene, camera, what is drawn

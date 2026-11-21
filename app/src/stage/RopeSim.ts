@@ -88,6 +88,10 @@ export class Rope {
   readonly dependents: Rope[] = [];
   /** For the owner's use. */
   tag = -1;
+  /** 1 for each point that has touched the floor since the rope came loose. */
+  readonly touched: Uint8Array;
+  /** How many of its points have touched the floor. */
+  landed = 0;
 
   /** @internal */ calm = 0;
 
@@ -97,6 +101,7 @@ export class Rope {
     this.p = Float32Array.from(points);
     this.q = Float32Array.from(points);
     this.rest = new Float32Array(this.n);
+    this.touched = new Uint8Array(this.n);
     for (let i = 1; i < this.n; i++) {
       this.rest[i] = Math.hypot(
         this.p[3 * i] - this.p[3 * i - 3],
@@ -229,11 +234,18 @@ export class RopeSim {
   readonly ropes: Rope[] = [];
   /** Called when a loose rope comes to rest for good. */
   onSettle: ((rope: Rope) => void) | null = null;
+  /**
+   * Called the first time each point of a loose rope touches the floor: which point, and how
+   * fast it was coming down (cm/s). `rope.landed` already counts it, so 1 means the rope has just arrived.
+   */
+  onTouchdown: ((rope: Rope, point: number, speed: number) => void) | null = null;
 
   private pending = 0;
   private awakeCount = 0;
   private readonly random: () => number;
   private readonly scratch = new Float32Array(3);
+  /** How far down each point of the rope in hand set out to move this step, before anything stopped it. */
+  private drop = new Float32Array(64);
 
   constructor(random: () => number = Math.random) {
     this.random = random;
@@ -432,6 +444,8 @@ export class RopeSim {
       // ---- move ---------------------------------------------------
       const drag = rope.free ? DRAG_FREE : rope.drag;
       const gy = -fall * rope.gravity;
+      if (this.drop.length < n) this.drop = new Float32Array(n * 2);
+      const drop = this.drop;
       for (let i = first; i < n; i++) {
         const k = 3 * i;
         const vx = (p[k] - q[k]) * drag;
@@ -442,6 +456,7 @@ export class RopeSim {
         q[k + 2] = p[k + 2];
         p[k] += vx;
         p[k + 1] += vy + gy;
+        drop[i] = -(vy + gy);
         p[k + 2] += vz;
       }
 
@@ -519,6 +534,12 @@ export class RopeSim {
           const k = 3 * i;
           const ground = floor + (bed ? bed.heightAt(p[k], p[k + 2]) : 0);
           if (p[k + 1] <= ground + 1e-3) {
+            if (!rope.touched[i]) {
+              rope.touched[i] = 1;
+              rope.landed++;
+              // (the floor has already stopped it: its speed is what it set out with)
+              this.onTouchdown?.(rope, i, Math.max(0, drop[i] / STEP));
+            }
             q[k + 1] = p[k + 1];
             q[k] = p[k] - (p[k] - q[k]) * FLOOR_GRIP;
             q[k + 2] = p[k + 2] - (p[k + 2] - q[k + 2]) * FLOOR_GRIP;

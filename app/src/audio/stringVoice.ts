@@ -53,8 +53,12 @@ export function knotPartial(f0: number, lengthCm: number, position: number | nul
   return fk;
 }
 
-/** `clicks`: a broken or cut cord stops with a crack. Without it the cord stops just the same, and silently. */
-export function synthString(spec: CordSound, sr: number, clicks = true): StereoSamples {
+/**
+ * `clicks`: a broken or cut cord stops with a crack. Without it the cord stops just the same, and silently.
+ * `breaths`: what was not recorded, and wear, are heard as breath. Without it they are silence, and the
+ * rest of the sound is as it was: a cord with no measured length is then only its knots' ticks, or nothing.
+ */
+export function synthString(spec: CordSound, sr: number, clicks = true, breaths = true): StereoSamples {
   const rnd = mulberry32(spec.seed || 1);
   const term = spec.termination ?? '';
   const f0 = cordFrequency(spec.length);
@@ -100,8 +104,11 @@ export function synthString(spec: CordSound, sr: number, clicks = true): StereoS
 
   // ---- breath: what a cord with no pitch sounds like ---------------
   const vary = mulberry32(breathSeed(spec.seed));
+  // A breath that is not heard is still made, and thrown away: the noise it takes is taken all the
+  // same, so that everything after it in the sound is sample for sample what it would have been.
+  const unheard = breaths ? null : new Float32Array(n);
   function breath(amp: number, centre: number, len: number): void {
-    renderBreath(breathOf(amp, centre, len, vary), sr, rnd, mono);
+    renderBreath(breathOf(amp, centre, len, vary), sr, rnd, unheard ?? mono);
   }
 
   const bright = 0.25 + 0.7 * lum;

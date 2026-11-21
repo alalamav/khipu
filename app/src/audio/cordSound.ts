@@ -12,6 +12,13 @@ import type { Cord, HangingKhipu, KnotDirection, KnotTypeCode, TerminationCode }
 export type VoiceKind = 'string' | 'operator' | 'resonator';
 
 export const VOICE_KINDS: readonly VoiceKind[] = ['string', 'operator', 'resonator'];
+/**
+ * The voices the interface offers. The string voice is hidden, not gone: it is still built, tested and
+ * documented, and a link can still ask for it (?voice=string). Add 'string' here to show it again.
+ */
+export const SHOWN_VOICES: readonly VoiceKind[] = ['operator', 'resonator'];
+/** The voice a visitor starts in. */
+export const DEFAULT_VOICE: VoiceKind = SHOWN_VOICES[0];
 
 /** A cluster of knots still tied on the cord. `Knot` satisfies this. */
 export interface KnotSound {
@@ -116,4 +123,22 @@ export function durationOf(termination: TerminationCode | null, lightness: numbe
 
 export function clamp01(v: number): number {
   return v < 0 ? 0 : v > 1 ? 1 : v;
+}
+
+/** A cord landing knocks at one of the hum's harmonics, from this one up to twice it: 252 to 1008 Hz. */
+const LANDING_HARMONIC = 6;
+
+/**
+ * Which harmonic of the hum a landing cord knocks at. The cord's own pitch (from the length of the
+ * piece that fell) is moved by octaves into one octave of the hum's harmonics and then to the nearest of them.
+ * (It was an octave lower at first, and was hard to hear beside the knots.) A cord that was never
+ * measured has no pitch: the darker it is, the lower it lands.
+ */
+export function landingHarmonic(lengthCm: number | null, lightness: number, hum: number): number {
+  const lo = LANDING_HARMONIC;
+  if (!lengthCm || !(lengthCm > 0) || !(hum > 0)) return lo + Math.min(lo - 1, Math.floor(lightness * lo));
+  let ratio = cordFrequency(lengthCm) / hum;
+  while (ratio >= lo * 2) ratio /= 2;
+  while (ratio < lo) ratio *= 2;
+  return Math.max(lo, Math.round(ratio));
 }

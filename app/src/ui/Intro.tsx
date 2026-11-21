@@ -34,7 +34,7 @@ export function Intro({ stats, onEnter }: { stats: ArchiveStats | null; onEnter:
       </button>
       <p className="mt-3.5 text-[13px] text-ink-dim">
         Move across the cords to sound them. Press <span className="text-ink">Read</span> to pass a hand along the whole khipu.
-        Three voices read the same rows: as measured strings, as relationships between cords, as numbers.
+        Two voices read the same rows: as relationships between cords, and as numbers.
       </p>
     </Sheet>
   );

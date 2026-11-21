@@ -173,6 +173,20 @@ describe('every sound of the string voice', () => {
     expect(digest(synthString(knotted, SAMPLE_RATE, false))).toBe(digest(synthString(knotted, SAMPLE_RATE)));
   });
 
+  it('leaves the breath out when breath is off, and changes nothing else', () => {
+    const [, knotted] = GOLDEN.find(([label]) => label === 'knotted')!;
+    // a sound cord has no breath to lose
+    expect(digest(synthString(knotted, SAMPLE_RATE, true, false))).toBe(digest(synthString(knotted, SAMPLE_RATE)));
+    // a worn one has: without it, what is left is the same string, sample for sample
+    const worn = { ...knotted, integrity: 0.4 };
+    const held = synthString(worn, SAMPLE_RATE, true, false);
+    expect(digest(held)).not.toBe(digest(synthString(worn, SAMPLE_RATE)));
+    expect(digest(held)).toBe(digest(synthString(knotted, SAMPLE_RATE)));
+    // a cord with no length and no knots was only breath: now it is silence
+    const bare = synthString({ ...knotted, length: null, knots: [] }, SAMPLE_RATE, true, false);
+    expect(Math.max(peak(bare.L), peak(bare.R))).toBe(0);
+  });
+
   it('stays at or below half of full scale', () => {
     for (const [label, spec] of GOLDEN) {
       const { L, R } = synthString(spec, SAMPLE_RATE);

@@ -1,9 +1,9 @@
 import type { KeyboardEvent, ReactNode } from 'react';
-import type { VoiceKind } from '../audio/cordSound';
+import { SHOWN_VOICES, type VoiceKind } from '../audio/cordSound';
 import type { PieceState } from '../piece/Piece';
 import { usePiece } from './usePiece';
 
-const VOICES: readonly { kind: VoiceKind; title: string }[] = [
+const ALL_VOICES: readonly { kind: VoiceKind; title: string }[] = [
   { kind: 'string', title: 'The row as measurements: each cord is a string as long as its length' },
   {
     kind: 'operator',
@@ -11,6 +11,8 @@ const VOICES: readonly { kind: VoiceKind; title: string }[] = [
   },
   { kind: 'resonator', title: 'The row as numbers: each cord strikes a bank of resonant filters tuned by its knot values' },
 ];
+/** The voices that can be chosen here. One that is hidden (see SHOWN_VOICES) keeps its entry above. */
+const VOICES = ALL_VOICES.filter(({ kind }) => SHOWN_VOICES.includes(kind));
 
 /** Controls that belong together and stay together. */
 function Group({ children }: { children: ReactNode }) {
@@ -139,7 +141,8 @@ export function Controls({
                 key={kind}
                 role="radio"
                 aria-checked={state.voice === kind}
-                tabIndex={state.voice === kind ? 0 : -1}
+                // (a link can start the piece in a voice that is not offered here: then the first one takes the focus)
+                tabIndex={state.voice === kind || (i === 0 && !SHOWN_VOICES.includes(state.voice)) ? 0 : -1}
                 title={title}
                 onClick={() => piece.setVoice(kind)}
                 className={
@@ -181,7 +184,7 @@ export function Controls({
             className={'btn' + (state.hum ? ' btn-on' : '')}
             aria-pressed={state.hum}
             onClick={() => piece.setHum(!state.hum)}
-            title="The low hum of the main cord: on or off"
+            title="The low hum of the main cord, heard while a hand moves or a reading runs: on or off"
           >
             hum
           </button>
@@ -192,6 +195,14 @@ export function Controls({
             title="The snap of a cord parting and the crack of a broken or cut cord: on or off"
           >
             clicks
+          </button>
+          <button
+            className={'btn' + (state.breath ? ' btn-on' : '')}
+            aria-pressed={state.breath}
+            onClick={() => piece.setBreath(!state.breath)}
+            title="The breath heard where a length or an ending was not recorded, and on worn cords: on or off"
+          >
+            breath
           </button>
         </Group>
 
